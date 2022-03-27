@@ -1,0 +1,25 @@
+{
+  "name": "cda-fhir-compare",
+  "version": "0.0.1",
+  "description": "Repo for CDA-FHIR comparison web tool",
+  "main": "index.html",
+  "author": {
+    "name": "More Informatics, Inc.",
+    "email": "jdamore@moreinformatics.com"
+  },
+  "scripts": {
+    "start": "nodemon app.js -e js,html,css"
+  },
+  "engines": {
+    "node": "^8.9.1"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "nodemon": "^2.0.15"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jddamore/cda-fhir-compare"
+  },
+  "snyk": true
+}

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
+    <meta name="generator" content="Hugo 0.84.0">
+    <title>Starter Template · Bootstrap v5.0</title>
+
+    <link rel="canonical" href="https://getbootstrap.com/docs/5.0/examples/starter-template/">
+
+    
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <style>
+      textarea {
+        white-space: pre;
+        overflow-wrap: normal;
+        overflow-x: scroll;
+      }
+
+<!--  .codeArea {
+        font-family: 'Courier New', Courier, monospace
+      }
+    -->      
+     
+      .codeArea, .lineCounter {
+          font-family: lucida console, courier new, courier, monospace;
+          margin: 0;
+          padding: 10px 0;
+          border-radius: 0;
+          resize: none;
+          font-size: 16px;
+          line-height: 1.2;
+          outline: none;
+          -moz-box-sizing: border-box;
+          -webkit-box-sizing: border-box;
+          box-sizing: border-box;
+      }
+
+      .lineCounter:focus-visible,
+      .codeArea:focus-visible {
+        outline:none;
+      }
+
+      .lineCounter {
+        display: flex;
+        border-color: transparent;
+        overflow-y: hidden;
+        text-align: right;
+        box-shadow: none;
+        color: #707070;
+        background-color: #d8d8d8;
+        position: absolute;
+        width: 3.5rem;
+        /* Determine appearance of line counter */
+        background-color:#3E3D32;
+        border-color:#3E3D32;
+        color:#928869;
+      }
+
+      .codeArea {
+        padding-left: calc(3.5rem + 5px);
+        width:100%;
+        /* Determine appearance of code editor */
+        background-color:#272822;
+        border-color:#272822;
+        color:#ffffff;
+      }
+    </style>
+
+    
+    <!-- Custom styles for this template -->
+    <link href="starter-template.css" rel="stylesheet">
+  </head>
+  <body>
+    
+<div class="col-lg-12 mx-auto p-3 py-md-5">
+  <header class="d-flex align-items-center pb-3 mb-5 border-bottom">
+    <a href="/" class="d-flex align-items-center text-dark text-decoration-none">
+      <span class="fs-4">Yo1</span>
+    </a>
+  </header>
+
+  <main>
+    <h1>Yo2</h1>
+    <p class="col-md-12">Quickly and easily get started with Bootstrap's compiled, production-ready files with this barebones example featuring some basic HTML and helpful links. Download all our examples to get started.</p>
+
+    <div class="mb-2">
+      <button id="example" class="btn btn-primary btn-lg px-4">Try an example</button>
+      <button id="formatButton" class="btn btn-primary btn-lg px-4">Format Code</button>
+    </div>
+
+    <hr class="col-md-6 mb-5">
+    <div class="row g-5">
+      <div class="col-md-6">
+          <div class="col-md-11">
+            <div style="height: 150px">
+              <h2>Place CDA Entry Here</h2>
+              <p>More text...</p>
+              <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+                  Dropdown button
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+                  <li><a class="dropdown-item" href="#">Action</a></li>
+                  <li><a class="dropdown-item" href="#">Another action</a></li>
+                  <li><a class="dropdown-item" href="#">Something else here</a></li>
+                </ul>
+              </div>
+            </div>
+            <textarea id="line1" class='lineCounter' readonly rows="100">1.</textarea>
+            <textarea id="code1" class="form-control codeArea" id="exampleFormControlTextarea3" rows="100"></textarea>
+          </div>
+        </div>
+      <div class="col-md-6">
+        <div class="col-md-11">
+          <div style="height: 150px">
+            <h2>Place FHIR Resource Here</h2>
+            <p>More text</p>
+            <div class="dropdown">
+              <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton2" data-bs-toggle="dropdown" aria-expanded="false">
+                Dropdown button
+              </button>
+              <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton2">
+                <li><a class="dropdown-item" href="#">Action</a></li>
+                <li><a class="dropdown-item" href="#">Another action</a></li>
+                <li><a class="dropdown-item" href="#">Something else here</a></li>
+              </ul>
+            </div>
+          </div>
+          <textarea id="line2" class='lineCounter' readonly rows="100">1.</textarea>
+          <textarea id="code2" class="form-control codeArea" id="exampleFormControlTextarea3" rows="100"></textarea>
+      </div>
+      </div>
+    </div>
+  </main>
+  <footer class="pt-5 my-5 text-muted border-top">
+    Created by the Bootstrap team &middot; &copy; 2021
+  </footer>
+</div>
+<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" ></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.min.js" integrity="sha384-Atwg2Pkwv9vp0ygtn1JAojH0nYbwNJLPhwyoVbhoPwBhjQPR5VtM2+xf0Uwh9KtT" crossorigin="anonymous"></script>
+<script src="/assets/js/vkbeautify.js"></script>
+<script>
+  $(function () {
+
+    var codeEditor1 = document.getElementById('code1');
+    var lineCounter1 = document.getElementById('line1');
+    codeEditor1.addEventListener('scroll', () => {
+        lineCounter1.scrollTop = codeEditor1.scrollTop;
+        lineCounter1.scrollLeft = codeEditor1.scrollLeft;
+    });
+    var codeEditor2 = document.getElementById('code2');
+    var lineCounter2 = document.getElementById('line2');
+    codeEditor2.addEventListener('scroll', () => {
+        lineCounter2.scrollTop = codeEditor2.scrollTop;
+        lineCounter2.scrollLeft = codeEditor2.scrollLeft;
+    });
+
+    var lineCountCache = 0;
+    function line_counter(thing) {
+          var lineCount = codeEditor1.value.split('\n').length;
+          var outarr = new Array();
+          if (lineCountCache != lineCount) {
+            for (var x = 0; x < lineCount; x++) {
+                outarr[x] = (x + 1) + '.';
+            }
+            thing.value = outarr.join('\n');
+          }
+          lineCountCache = lineCount;
+    }
+    codeEditor1.addEventListener('input', () => {
+        line_counter(lineCounter1);
+    });
+    codeEditor1.addEventListener('input', () => {
+        line_counter(lineCounter2);
+    });
+
+    var format = $('#formatButton');
+    format.click(function () {
+      $('code1')
+      var c1 = $('#code1').val();
+      $('#code1').val(vkbeautify.xml(c1, 2));
+      line_counter(lineCounter1);
+    })
+});
+</script>
+  </body>
+</html>
