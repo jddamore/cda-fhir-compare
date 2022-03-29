@@ -251,7 +251,7 @@
       if(!cda) {
         alert('ERROR: No CDA content included')
       } 
-      else if (cda.slice(0,7) !== '<entry>') {
+      else if (cda.slice(0,6) !== '<entry') {
         alert('ERROR: CDA not formatted properly');
       }
       else if (!fhir){

@@ -97,6 +97,7 @@ const code = function (thing, data) {
   for (let i = 0; i < thing.length; i++) {
     if (thing[i].code) data.push(thing[i].code);
     if (thing[i].codeSystem) data.push(thing[i].codeSystem); 
+    if (thing[i].displayName) data.push(thing[i].displayName); 
     if (thing[i].originalText) originalText(thing[i].originalText, data);  
     if (thing[i].translation) code(thing[i].translation, data);
   }
@@ -111,6 +112,7 @@ const consumable = function (thing, data) {
 const effectiveTime = function (thing, data) {
   for (let i = 0; i < thing.length; i++) {
     if (thing[i].value) {
+      console.log(thing[i].value);
       data.push(thing[i].value);
       if (thing[i].unit) {
         data.push(thing[i].unit);
@@ -127,7 +129,7 @@ const effectiveTime = function (thing, data) {
       }
     }
   }
-} 
+}
 
 const id = function (thing, data) {
   for (let i = 0; i < thing.length; i++) {
@@ -167,6 +169,7 @@ const value = function (thing, data) {
     if (thing[i].unit) data.push(thing[i].unit);
     if (thing[i].code) data.push(thing[i].code);
     if (thing[i].codeSystem) data.push(thing[i].codeSystem); 
+    if (thing[i].displayName) data.push(thing[i].displayName); 
     if (thing[i].originalText) originalText(thing[i].originalText, data);  
     if (thing[i].translation) code(thing[i].translation, data);
   }
@@ -193,17 +196,23 @@ const act = function (thing, data) {
   if (thing[0].entryRelationship) {
     entryRelationship(thing[0].entryRelationship, data)
   }
+  if (thing[0].author){
+    author(thing[0].author, data);
+  }
+  if (thing[0].performer){
+    author(thing[0].performer, data);
+  }
 }
 
 const author = function (thing, data) {
   if (thing[0].functionCode) {
-    code(thing[0].functionCode);
+    code(thing[0].functionCode, data);
   }
   if (thing[0].code) {
-    code(thing[0].code);
+    code(thing[0].code, data);
   }
   if (thing[0].time) {
-    effectiveTime(thing[0].time);
+    effectiveTime(thing[0].time, data);
   }
   if (thing[0].assignedAuthor && thing[0].assignedAuthor[0]) {
     if (thing[0].assignedAuthor[0].id) {
@@ -255,10 +264,10 @@ const encounter = function (thing, data) {
     entryRelationship(thing[0].entryRelationship, data)
   }
   if (thing[0].author){
-    author(thing[0].author);
+    author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer);
+    author(thing[0].performer, data);
   }
 }
 
@@ -334,10 +343,10 @@ const observation = function (thing, data) {
     entryRelationship(thing[0].entryRelationship, data)
   }
   if (thing[0].author){
-    author(thing[0].author);
+    author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer);
+    author(thing[0].performer, data);
   }
 }
 
@@ -359,10 +368,10 @@ const organizer = function (thing, data) {
     }
   }
   if (thing[0].author){
-    author(thing[0].author);
+    author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer);
+    author(thing[0].performer, data);
   }
 }
 
@@ -445,10 +454,10 @@ const procedure = function (thing, data) {
     entryRelationship(thing[0].entryRelationship, data)
   }
   if (thing[0].author){
-    author(thing[0].author);
+    author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer);
+    author(thing[0].performer, data);
   }
 }
 
@@ -496,10 +505,10 @@ const substanceAdministration = function (thing, data) {
     entryRelationship(thing[0].entryRelationship, data)
   }
   if (thing[0].author){
-    author(thing[0].author);
+    author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer);
+    author(thing[0].performer, data);
   }
 }
 
@@ -526,10 +535,10 @@ const supply = function (thing, data) {
     entryRelationship(thing[0].entryRelationship, data)
   }
   if (thing[0].author){
-    author(thing[0].author);
+    author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer);
+    author(thing[0].performer, data);
   }
 }
 
@@ -566,7 +575,7 @@ const match = function (fhirStuff, data) {
         matches.fhir.push({string: data[i], color: colorIndex});
         prior[data[i]] = true;
       }
-      if (translation[data[i]]) {
+      else if (translation[data[i]]) {
         let pieces = translation[data[i]].split('|')
         for (let j = 0; j < pieces.length; j++) {
           if (fhirStuff.includes(pieces[j])) {
@@ -576,12 +585,12 @@ const match = function (fhirStuff, data) {
           }
         }
       }
-      if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
+      else if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
         let iso = dateTranslate(data[i]);
         if (iso) {
           let start = iso.slice(0,11);
-          let end = iso.slice(13);
-          let re = new RegExp(start + '.*' + end, 'gm');
+          let end = iso.slice(13,16);
+          let re = new RegExp(start + '..' + end, 'gm');
           let results = fhirStuff.match(re)
           if (results && results.length) {
             matches.cda.push({string: data[i], color: colorIndex});
@@ -594,6 +603,7 @@ const match = function (fhirStuff, data) {
     }
     if (colorIndex === 43) colorIndex = 10;
   }
+  console.log(matches);
   return matches;
 }
 
@@ -669,7 +679,7 @@ const run = function (cdaStuff, fhirStuff) {
     }
   }
   let matches = match(fhirStuff, data)
-  console.log(matches);
+  // console.log(matches);
 
   let html = mark(cdaStuff, fhirStuff, matches)
   // console.log(data);
