@@ -4,30 +4,26 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
-    <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
-    <meta name="generator" content="Hugo 0.84.0">
-    <title>Starter Template · Bootstrap v5.0</title>
-
-    <link rel="canonical" href="https://getbootstrap.com/docs/5.0/examples/starter-template/">
-
-    
-
+    <meta name="author" content="John D'Amore, More Informatics">
+    <title>CDA-FHIR Comparison Tool</title>
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon"/>
+    <link rel="canonical" href="https://getbootstrap.com/docs/5.0/examples/starter-template/">  
+    <link href="/colors.css" rel="stylesheet">
     <!-- Bootstrap core CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 
     <style>
       textarea {
         white-space: pre;
-        overflow-wrap: normal;
+        overflow: scroll;
         overflow-x: scroll;
       }
 
-<!--  .codeArea {
+     .codeArea {
         font-family: 'Courier New', Courier, monospace
       }
-    -->      
      
-      .codeArea, .lineCounter {
+     .codeArea, .lineCounter {
           font-family: lucida console, courier new, courier, monospace;
           margin: 0;
           padding: 10px 0;
@@ -71,78 +67,83 @@
         color:#ffffff;
       }
     </style>
-
     
-    <!-- Custom styles for this template -->
-    <link href="starter-template.css" rel="stylesheet">
   </head>
   <body>
     
 <div class="col-lg-12 mx-auto p-3 py-md-5">
+  <!--
   <header class="d-flex align-items-center pb-3 mb-5 border-bottom">
-    <a href="/" class="d-flex align-items-center text-dark text-decoration-none">
-      <span class="fs-4">Yo1</span>
-    </a>
+    <a href="/" class="d-flex align-items-center text-dark text-decoration-none"></a>
   </header>
-
+  -->
   <main>
-    <h1>Yo2</h1>
-    <p class="col-md-12">Quickly and easily get started with Bootstrap's compiled, production-ready files with this barebones example featuring some basic HTML and helpful links. Download all our examples to get started.</p>
+    <h1><img src="/assets/cda-favicon.png" style="height:40px">&nbsp;<mark class="color36">CDA</mark>-<mark class="color13">FHIR</mark> Visualizer Tool&nbsp;<img src="/assets/fhir.png" style="height:40px"></h1>
+    <p class="col-md-12">This beta tool allows users to submit a CDA entry and FHIR resource and visualize how the data flow using selective data highlighting. It does not provide a mapping between formats. For more on the HL7 projects for mapping CDA/FHIR, please see <a href="https://confluence.hl7.org/display/CGP/C-CDA+to+and+from+US+Core+Mapping">US C-CDA to and from US Core Mapping</a></p>
+
+    <hr class="col-md-12 mb-20">
 
     <div class="mb-2">
-      <button id="example" class="btn btn-primary btn-lg px-4">Try an example</button>
-      <button id="formatButton" class="btn btn-primary btn-lg px-4">Format Code</button>
+      <button id="example" class="btn btn-primary btn-lg px-4">Load an example</button>
+      <button id="formatButton" class="btn btn-primary btn-lg px-4">Format XML & JSON</button>
+      <button id="submit" class="btn btn-success btn-lg px-4">Submit Code Below</button>
+      <button id="clear" class="btn btn-danger btn-lg px-4">Clear</button>
     </div>
 
-    <hr class="col-md-6 mb-5">
     <div class="row g-5">
       <div class="col-md-6">
           <div class="col-md-11">
             <div style="height: 150px">
               <h2>Place CDA Entry Here</h2>
-              <p>More text...</p>
+              <p>CDA must begin with &lt;entry&gt; tag and include only a single entry. If you copy unformatted XML, please use "Format Code" button above before pressing "Submit". This tool does not validate CDA content and invalid CDA may not generate appropriate highlighting</p>
+              <!--
               <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
                   Dropdown button
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
-                  <li><a class="dropdown-item" href="#">Action</a></li>
-                  <li><a class="dropdown-item" href="#">Another action</a></li>
-                  <li><a class="dropdown-item" href="#">Something else here</a></li>
+                  <li><a class="dropdown-item" href="#">TBD</a></li>
+                  <li><a class="dropdown-item" href="#">TBD 2</a></li>
+                  <li><a class="dropdown-item" href="#">TBD 3</a></li>
                 </ul>
               </div>
+            -->
             </div>
             <textarea id="line1" class='lineCounter' readonly rows="100">1.</textarea>
-            <textarea id="code1" class="form-control codeArea" id="exampleFormControlTextarea3" rows="100"></textarea>
+            <textarea id="code1" class="form-control codeArea" rows="100"></textarea>
           </div>
         </div>
       <div class="col-md-6">
         <div class="col-md-11">
           <div style="height: 150px">
             <h2>Place FHIR Resource Here</h2>
-            <p>More text</p>
+            <p>Only a single FHIR resource should be included as JSON. The base property should look like { "resource": {THE ACTUAL CONTENT HERE} }. If you copy unformatted JSON, please use "Format Code" button above before pressing "Submit". This tool does not validate FHIR content and only accepts JSON</p>
+            <!--
             <div class="dropdown">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton2" data-bs-toggle="dropdown" aria-expanded="false">
                 Dropdown button
               </button>
               <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton2">
-                <li><a class="dropdown-item" href="#">Action</a></li>
-                <li><a class="dropdown-item" href="#">Another action</a></li>
-                <li><a class="dropdown-item" href="#">Something else here</a></li>
-              </ul>
+                <li><a class="dropdown-item" href="#">TBD</a></li>
+                <li><a class="dropdown-item" href="#">TBD 2</a></li>
+                <li><a class="dropdown-item" href="#">TBD 3</a></li>
+            </ul>
             </div>
+            -->
           </div>
           <textarea id="line2" class='lineCounter' readonly rows="100">1.</textarea>
-          <textarea id="code2" class="form-control codeArea" id="exampleFormControlTextarea3" rows="100"></textarea>
+          <textarea id="code2" class="form-control codeArea" rows="100"></textarea>
       </div>
       </div>
     </div>
   </main>
   <footer class="pt-5 my-5 text-muted border-top">
-    Created by the Bootstrap team &middot; &copy; 2021
+    Created by More Informatics, Inc. Code is available open-source in <a href="https://github.com/jddamore/cda-fhir-compare">this repository</a> 
   </footer>
 </div>
-<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+<!-- need full JQuery for AJAX -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+<!-- <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" ></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.min.js" integrity="sha384-Atwg2Pkwv9vp0ygtn1JAojH0nYbwNJLPhwyoVbhoPwBhjQPR5VtM2+xf0Uwh9KtT" crossorigin="anonymous"></script>
 <script src="/assets/js/vkbeautify.js"></script>
@@ -163,31 +164,129 @@
     });
 
     var lineCountCache = 0;
-    function line_counter(thing) {
-          var lineCount = codeEditor1.value.split('\n').length;
-          var outarr = new Array();
-          if (lineCountCache != lineCount) {
-            for (var x = 0; x < lineCount; x++) {
-                outarr[x] = (x + 1) + '.';
-            }
-            thing.value = outarr.join('\n');
-          }
-          lineCountCache = lineCount;
+    var lineCountCache2 = 0;
+    function line_counter1(thing) {
+      var lineCount = codeEditor1.value.split('\n').length;
+      var outarr = new Array();
+      if (lineCountCache !== lineCount) {
+        for (var x = 0; x < lineCount; x++) {
+            outarr[x] = (x + 1) + '.';
+        }
+        thing.value = outarr.join('\n');
+      }
+      lineCountCache = lineCount;
     }
+
+    function line_counter2(thing2) {       
+      var lineCount2 = codeEditor2.value.split('\n').length;
+      var outarr2 = new Array();
+      if (lineCountCache2 !== lineCount2) {
+        for (var y = 0; y < lineCount2; y++) {
+            outarr2[y] = (y + 1) + '.';
+        }
+        thing2.value = outarr2.join('\n');
+      }
+      lineCountCache2 = lineCount2;
+    }
+
     codeEditor1.addEventListener('input', () => {
-        line_counter(lineCounter1);
+        line_counter1(lineCounter1);
     });
-    codeEditor1.addEventListener('input', () => {
-        line_counter(lineCounter2);
+    codeEditor2.addEventListener('input', () => {
+        line_counter2(lineCounter2);
     });
 
     var format = $('#formatButton');
     format.click(function () {
-      $('code1')
       var c1 = $('#code1').val();
       $('#code1').val(vkbeautify.xml(c1, 2));
-      line_counter(lineCounter1);
+      line_counter1(lineCounter1);
+      var c2 = $('#code2').val();
+      $('#code2').val(vkbeautify.json(c2, 2));
+      line_counter2(lineCounter2);
     })
+
+    var clear = $('#clear');
+    clear.click(function () {
+      $('#code1').val(' ');
+      $('#code2').val(' ');
+      line_counter1(lineCounter1);
+      line_counter2(lineCounter2);
+    })
+
+    var getExample = $('#example');
+    getExample.click(function () {
+      alert('This is an example allergy.');
+      $.ajax({
+        type: "get",
+        url: "/examples/allergy/example.txt",
+        success: function(data) {
+            $('#code1').val(vkbeautify.xml(data, 2));
+            line_counter1(lineCounter1);
+        },
+        error: function(xhr, status) {
+            /* handle error here */
+            alert('error loading')
+        }
+      });
+      $.ajax({
+        type: "get",
+        url: "/examples/allergy/example.json",
+        dataType: "json",
+        success: function(data) {
+            /* handle data here */
+            $('#code2').val(vkbeautify.json(data, 2));
+            line_counter2(lineCounter2);
+        },
+        error: function(xhr, status) {
+            alert('error loading')
+        }
+      });
+    });
+
+    var submitData = $('#submit');
+    submitData.click(function () {
+      var cda = $('#code1').val();
+      var fhir = $('#code2').val();
+      if(!cda) {
+        alert('ERROR: No CDA content included')
+      } 
+      else if (cda.slice(0,7) !== '<entry>') {
+        alert('ERROR: CDA not formatted properly');
+      }
+      else if (!fhir){
+        alert('ERROR: No FHIR content included');
+      }
+      else {
+        var check = null
+        try {
+          check = JSON.parse(fhir);
+        }
+        catch(e){
+          check = null;
+          alert('ERROR: FHIR is not proper JSON');
+        }
+        if (check && !check.resource) {
+          alert('ERROR: FHIR not formatted properly');
+        }
+        let data = {
+          cda: cda,
+          fhir: fhir
+        };
+        $.ajax({
+        type: "post",
+        url: "/data",
+        data: data,
+        success: function(html) {
+          var newWindow = window.open("", "CDA-FHIR Highlighting Result");
+          newWindow.document.write(html);
+        },
+        error: function(xhr, status) {
+            alert('error with server')
+        }
+      });
+      }
+    });
 });
 </script>
   </body>
