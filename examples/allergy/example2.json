@@ -1,0 +1,74 @@
+{
+  "resource": {
+    "resourceType": "AllergyIntolerance",
+    "identifier": [
+      {
+        "system": "36e3e930-7b14-11db-9fe1-0800200c9a66-test",
+        "value": "36e3e930-7b14-11db-9fe1-0800200c9a66-test"
+      },
+      {
+        "system": "4adc1020-7b14-11db-9fe1-0800200c9a66test",
+        "value": "4adc1020-7b14-11db-9fe1-0800200c9a66test"
+      }
+    ],
+    "clinicalStatus": {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+          "code": "active",
+          "display": "Active"
+        }
+      ],
+      "text": "Active"
+    },
+    "type": "intolerance",
+    "category": [
+      "Medication"
+    ],
+    "criticality": "Moderate to severe",
+    "code": {
+      "coding": [
+        {
+          "system": "urn:oid:2.16.840.1.113883.6.88",
+          "code": "70618",
+          "display": "Penicillin"
+        }
+      ],
+      "text": "Penicillin"
+    },
+    "patient": {
+      "reference": "Patient/2.16.840.1.113883.4.1::444222222"
+    },
+    "onsetPeriod": {
+      "start": "1998-05-01T11:45:00"
+    },
+    "recordedDate": "1998-05-01T11:45:00",
+    "recorder": {
+      "reference": "Practitioner/2.16.840.1.113883.4.6::555555555"
+    },
+    "reaction": [
+      {
+        "id": "4adc1020-7b14-11db-9fe1-0800200c9a64",
+        "manifestation": [
+          {
+            "coding": [
+              {
+                "system": "urn:oid:2.16.840.1.113883.6.96",
+                "code": "422587007",
+                "display": "Nausea"
+              }
+            ],
+            "text": "Nausea"
+          }
+        ],
+        "onset": "2008-02-26T08:05:00",
+        "severity": "Mild",
+        "note": [
+          {
+            "text": "Nausea"
+          }
+        ]
+      }
+    ]
+  }
+}

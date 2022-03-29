@@ -1,0 +1,104 @@
+<entry typeCode="DRIV">
+	<act classCode="ACT" moodCode="EVN">
+		<templateId extension="2015-08-01" root="2.16.840.1.113883.10.20.22.4.30"/>
+		<templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+		<id root="36e3e930-7b14-11db-9fe1-0800200c9a66-test"/>
+		<code code="CONC" codeSystem="2.16.840.1.113883.5.6"/>
+		<statusCode code="active"/>
+		<effectiveTime>
+			<low value="199805011145-0800"/>
+		</effectiveTime>
+		<author typeCode="AUT">
+			<templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+			<time value="199805011145-0800"/>
+			<assignedAuthor>
+				<id extension="555555555" root="2.16.840.1.113883.4.6"/>
+				<code code="207QA0505X" codeSystem="2.16.840.1.113883.6.101" codeSystemName="Healthcare Provider Taxonomy (HIPAA)" displayName="Adult Medicine"/>
+			</assignedAuthor>
+		</author>
+		<entryRelationship typeCode="SUBJ">
+			<observation classCode="OBS" moodCode="EVN">
+				<templateId extension="2014-06-09" root="2.16.840.1.113883.10.20.22.4.7"/>
+				<templateId root="2.16.840.1.113883.10.20.22.4.7"/>
+				<id root="4adc1020-7b14-11db-9fe1-0800200c9a66test"/>
+				<code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+				<text>
+					<reference value="#allergytype1"/>
+				</text>
+				<statusCode code="completed"/>
+				<effectiveTime>
+					<low value="19980501"/>
+				</effectiveTime>
+				<value xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CD" code="419199007" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Allergy to substance"/>
+				<author typeCode="AUT">
+					<templateId root="2.16.840.1.113883.10.20.22.4.119"/>
+					<time value="199805011145-0800"/>
+					<assignedAuthor>
+						<id extension="test222223333" root="2.16.840.1.113883.4.6"/>
+						<code code="207KA0200X" codeSystem="2.16.840.1.113883.6.101" codeSystemName="Healthcare Provider Taxonomy (HIPAA)" displayName="Allergy"/>
+						<assignedPerson>
+							<name>
+								<given>TestEllen</given>
+								<family>TestEnter</family>
+							</name>
+						</assignedPerson>
+					</assignedAuthor>
+				</author>
+				<participant typeCode="CSM">
+					<participantRole classCode="MANU">
+						<playingEntity classCode="MMAT">
+							<code code="70618" codeSystem="2.16.840.1.113883.6.88" codeSystemName="RxNorm" displayName="Penicillin"/>
+						</playingEntity>
+					</participantRole>
+				</participant>
+				<entryRelationship inversionInd="true" typeCode="SUBJ">
+					<observation classCode="OBS" moodCode="EVN">
+						<templateId extension="2014-06-09" root="2.16.840.1.113883.10.20.22.4.8"/>
+						<templateId root="2.16.840.1.113883.10.20.22.4.8"/>
+						<code code="SEV" codeSystem="2.16.840.1.113883.5.4" codeSystemName="ActCode" displayName="Severity Observation"/>
+						<text>
+							<reference value="#allergyseverity1"/>
+						</text>
+						<statusCode code="completed"/>
+						<value xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CD" code="371924009" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Moderate to severe"/>
+					</observation>
+				</entryRelationship>
+				<entryRelationship inversionInd="true" typeCode="MFST">
+					<observation classCode="OBS" moodCode="EVN">
+						<templateId extension="2014-06-09" root="2.16.840.1.113883.10.20.22.4.9"/>
+						<templateId root="2.16.840.1.113883.10.20.22.4.9"/>
+						<id root="4adc1020-7b14-11db-9fe1-0800200c9a64"/>
+						<code code="ASSERTION" codeSystem="2.16.840.1.113883.5.4"/>
+						<text>
+							<reference value="#reaction1"/>
+						</text>
+						<statusCode code="completed"/>
+						<effectiveTime>
+							<low value="200802260805-0800"/>
+							<high value="200802281205-0800"/>
+						</effectiveTime>
+						<value xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CD" code="422587007" codeSystem="2.16.840.1.113883.6.96" displayName="Nausea"/>
+						<entryRelationship inversionInd="true" typeCode="SUBJ">
+							<observation classCode="OBS" moodCode="EVN">
+								<templateId extension="2014-06-09" root="2.16.840.1.113883.10.20.22.4.8"/>
+								<templateId root="2.16.840.1.113883.10.20.22.4.8"/>
+								<code code="SEV" codeSystem="2.16.840.1.113883.5.4" codeSystemName="ActCode" displayName="Severity Observation"/>
+								<statusCode code="completed"/>
+								<value xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CD" code="255604002" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Mild"/>
+							</observation>
+						</entryRelationship>
+					</observation>
+				</entryRelationship>
+				<entryRelationship inversionInd="true" typeCode="SUBJ">
+					<observation classCode="OBS" moodCode="EVN">
+						<templateId extension="2014-06-09" root="2.16.840.1.113883.10.20.22.4.28"/>
+						<templateId root="2.16.840.1.113883.10.20.22.4.28"/>
+						<code code="SEV" codeSystem="2.16.840.1.113883.5.4" codeSystemName="ActCode" displayName="Observation Status"/>
+						<statusCode code="completed"/>
+						<value xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CD" code="55561003" codeSystem="2.16.840.1.113883.6.96" codeSystemName="SNOMED CT" displayName="Active"/>
+					</observation>
+				</entryRelationship>
+			</observation>
+		</entryRelationship>
+	</act>
+</entry>
