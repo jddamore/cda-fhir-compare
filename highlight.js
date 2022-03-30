@@ -104,8 +104,13 @@ const code = function (thing, data) {
 }
 
 const consumable = function (thing, data) {
-  if (thing[0].consumable && thing[0].consumable[0] && thing[0].consumable[0].manufacturedProduct && thing[0].consumable[0].manufacturedProduct[0] && thing[0].consumable[0].manufacturedProduct[0].manufacturedMaterial && thing[0].consumable[0].manufacturedProduct[0].manufacturedMaterial[0] && thing[0].consumable[0].manufacturedProduct[0].manufacturedMaterial[0].code) {
-    code(thing[0].consumable[0].manufacturedProduct[0].manufacturedMaterial[0].code, data);
+  if (thing[0] && thing[0].manufacturedProduct && thing[0].manufacturedProduct[0] && thing[0].manufacturedProduct[0].manufacturedMaterial && thing[0].manufacturedProduct[0].manufacturedMaterial[0]) {
+    if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].code) {
+      code(thing[0].manufacturedProduct[0].manufacturedMaterial[0].code, data);
+    }
+    if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumber && thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumber[0]) {
+      data.push(thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumber[0]);
+    }
   }
 }
 
@@ -146,6 +151,7 @@ const originalText = function (thing, data) {
 }
 
 const name = function (thing, data) {
+  console.log(thing)
   if (thing[0].given || thing[0].family) {
     if (thing[0].given && thing[0].given.length) {
       for (let i = 0; i < thing[0].given.length; i++) {
@@ -200,47 +206,49 @@ const act = function (thing, data) {
     author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer, data);
+    performer(thing[0].performer, data);
   }
 }
 
 const author = function (thing, data) {
-  if (thing[0].functionCode) {
-    code(thing[0].functionCode, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].time) {
-    effectiveTime(thing[0].time, data);
-  }
-  if (thing[0].assignedAuthor && thing[0].assignedAuthor[0]) {
-    if (thing[0].assignedAuthor[0].id) {
-      id(thing[0].assignedAuthor[0].id, data);
+  if (thing & thing[0]) {
+    if (thing[0].functionCode) {
+      code(thing[0].functionCode, data);
     }
-    if (thing[0].assignedAuthor[0].code) {
-      code(thing[0].assignedAuthor[0].code, data);
+    if (thing[0].code) {
+      code(thing[0].code, data);
     }
-    if (thing[0].assignedAuthor[0].addr) {
-      addr(thing[0].assignedAuthor[0].addr, data);
+    if (thing[0].time) {
+      effectiveTime(thing[0].time, data);
     }
-    if (thing[0].assignedAuthor[0].telecom) {
-      telecom(thing[0].assignedAuthor[0].telecom, data);
+    if (thing[0].assignedAuthor && thing[0].assignedAuthor[0]) {
+      if (thing[0].assignedAuthor[0].id) {
+        id(thing[0].assignedAuthor[0].id, data);
+      }
+      if (thing[0].assignedAuthor[0].code) {
+        code(thing[0].assignedAuthor[0].code, data);
+      }
+      if (thing[0].assignedAuthor[0].addr) {
+        addr(thing[0].assignedAuthor[0].addr, data);
+      }
+      if (thing[0].assignedAuthor[0].telecom) {
+        telecom(thing[0].assignedAuthor[0].telecom, data);
+      }
+      if (thing[0].assignedAuthor[0].assignedPerson && thing[0].assignedAuthor[0].assignedPerson[0]) {
+        if (thing[0].assignedAuthor[0].assignedPerson[0].id) {
+          id(thing[0].assignedAuthor[0].assignedPerson[0].id, data)
+        }
+        if (thing[0].assignedAuthor[0].assignedPerson[0].name) {
+          name(thing[0].assignedAuthor[0].assignedPerson[0].name, data)
+        }
+        if (thing[0].assignedAuthor[0].assignedPerson[0].addr) {
+          addr(thing[0].assignedAuthor[0].assignedPerson[0].addr, data)
+        }
+        if (thing[0].assignedAuthor[0].assignedPerson[0].telecom) {
+          telecom(thing[0].assignedAuthor[0].assignedPerson[0].telecom, data)
+        }
+      } 
     }
-    if (thing[0].assignedAuthor[0].assignedPerson && thing[0].assignedAuthor[0].assignedPerson[0]) {
-      if (thing[0].assignedAuthor[0].assignedPerson[0].id) {
-        id(thing[0].assignedAuthor[0].assignedPerson[0].id, data)
-      }
-      if (thing[0].assignedAuthor[0].assignedPerson[0].name) {
-        name(thing[0].assignedAuthor[0].assignedPerson[0].name, data)
-      }
-      if (thing[0].assignedAuthor[0].assignedPerson[0].addr) {
-        addr(thing[0].assignedAuthor[0].assignedPerson[0].addr, data)
-      }
-      if (thing[0].assignedAuthor[0].assignedPerson[0].telecom) {
-        telecom(thing[0].assignedAuthor[0].assignedPerson[0].telecom, data)
-      }
-    } 
   }
 }
 
@@ -267,7 +275,7 @@ const encounter = function (thing, data) {
     author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer, data);
+    performer(thing[0].performer, data);
   }
 }
 
@@ -346,7 +354,7 @@ const observation = function (thing, data) {
     author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer, data);
+    performer(thing[0].performer, data);
   }
 }
 
@@ -371,21 +379,24 @@ const organizer = function (thing, data) {
     author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer, data);
+    performer(thing[0].performer, data);
   }
 }
 
 const performer = function (thing, data) {
-  if (thing.assignedEntity) {
-    thing = thing.assignedEntity
+  if (thing && thing[0] && thing[0].assignedEntity) {
+    thing = thing[0].assignedEntity;
+    if (thing[0].id) {
+      id(thing[0].id, data);
+    }
     if (thing[0].functionCode) {
-      code(thing[0].functionCode);
+      code(thing[0].functionCode, data);
     }
     if (thing[0].code) {
-      code(thing[0].code);
+      code(thing[0].code, data);
     }
     if (thing[0].time) {
-      effectiveTime(thing[0].time);
+      effectiveTime(thing[0].time, data);
     }
     if (thing[0].assignedPerson && thing[0].assignedPerson[0]) {
       if (thing[0].assignedPerson[0].id) {
@@ -457,7 +468,7 @@ const procedure = function (thing, data) {
     author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer, data);
+    performer(thing[0].performer, data);
   }
 }
 
@@ -501,6 +512,9 @@ const substanceAdministration = function (thing, data) {
   if (thing[0].participant){
     participant(thing[0].participant, data)
   }
+  if (thing[0].consumable){
+    consumable(thing[0].consumable, data)
+  }
   if (thing[0].entryRelationship) {
     entryRelationship(thing[0].entryRelationship, data)
   }
@@ -508,7 +522,8 @@ const substanceAdministration = function (thing, data) {
     author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer, data);
+    console.log('PERF!!!!!!!!!!')
+    performer(thing[0].performer, data);
   }
 }
 
@@ -538,7 +553,7 @@ const supply = function (thing, data) {
     author(thing[0].author, data);
   }
   if (thing[0].performer){
-    author(thing[0].performer, data);
+    performer(thing[0].performer, data);
   }
 }
 
@@ -570,7 +585,17 @@ const match = function (fhirStuff, data) {
   for (let i = 0; i < data.length; i++) {
     if (!prior[data[i]]) {
       let initialLength = matches.cda.length;
-      if (fhirStuff.includes('"' + data[i] + '"', 'gm') || fhirStuff.includes("'" + data[i] + "'", 'gm') ) {
+      if (fhirStuff.includes( '"' + data[i], 'gm') || fhirStuff.includes("'" + data[i], 'gm') ) {
+        matches.cda.push({string: data[i], color: colorIndex});
+        matches.fhir.push({string: data[i], color: colorIndex});
+        prior[data[i]] = true;
+      }
+      else if (fhirStuff.includes(data[i] + '"', 'gm') || fhirStuff.includes(data[i] + "'", 'gm') ) {
+        matches.cda.push({string: data[i], color: colorIndex});
+        matches.fhir.push({string: data[i], color: colorIndex});
+        prior[data[i]] = true;
+      }
+      else if (fhirStuff.includes(' ' + data[i] + ' ', 'gm')) {
         matches.cda.push({string: data[i], color: colorIndex});
         matches.fhir.push({string: data[i], color: colorIndex});
         prior[data[i]] = true;
@@ -678,11 +703,12 @@ const run = function (cdaStuff, fhirStuff) {
       console.log(`skipping ${cda} from main entry`);
     }
   }
+  console.log(data);
+
   let matches = match(fhirStuff, data)
   // console.log(matches);
 
   let html = mark(cdaStuff, fhirStuff, matches)
-  // console.log(data);
   // console.log(JSON.stringify(cda));
 
   // make a record for debugging time being
