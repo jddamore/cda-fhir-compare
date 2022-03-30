@@ -14,6 +14,7 @@ The tool uses a set of colors to highlight data within a clinical document (CDA 
 Assuming you have node and npm, all you'll need to do is to download packages and run app
 
 `npm i`
+
 `node app` 
 
 If you prefer to use `npm start` that will start using nodemon (may require separate package install) which will reset on file change or application crash.
