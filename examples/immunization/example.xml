@@ -1,0 +1,37 @@
+<entry typeCode="DRIV">
+  <substanceAdministration classCode="SBADM" moodCode="EVN" negationInd="false">
+    <templateId root="2.16.840.1.113883.10.20.22.4.52" extension="2015-08-01"/>
+    <templateId root="2.16.840.1.113883.10.20.22.4.52"/>
+    <id root="2.16.840.1.113883.3.3619.13" extension="17085464"/>
+    <text>
+      <reference value="#IMM_NAME_1"/>
+    </text>
+    <statusCode code="completed"/>
+    <effectiveTime value="20170706114400-0400"/>
+    <consumable>
+      <manufacturedProduct classCode="MANU">
+        <templateId root="2.16.840.1.113883.10.20.22.4.54" extension="2014-06-09"/>
+        <templateId root="2.16.840.1.113883.10.20.22.4.54"/>
+        <manufacturedMaterial>
+          <code code="120" codeSystem="2.16.840.1.113883.12.292" codeSystemName="CVX" displayName="DTaP-Hib-IPV"/>
+          <lotNumberText>526434</lotNumberText>
+        </manufacturedMaterial>
+        <manufacturerOrganization>
+          <name>sanofi pasteur</name>
+        </manufacturerOrganization>
+      </manufacturedProduct>
+    </consumable>
+    <performer>
+      <assignedEntity>
+        <id root="2.16.840.1.113883.3.3619.3" extension="46546"/>
+        <assignedPerson>
+          <name>
+            <given>Wilma</given>
+            <family>Thomas</family>
+            <suffix>MD</suffix>
+          </name>
+        </assignedPerson>
+      </assignedEntity>
+    </performer>
+  </substanceAdministration>
+</entry>

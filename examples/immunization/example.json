@@ -1,0 +1,50 @@
+{
+  "resource": {
+    "resourceType": "Immunization",
+    "id": "6221fa3a95c17c00096989ff",
+    "meta": {
+      "profile": [
+        "http://hl7.org/fhir/us/core/StructureDefinition/us-core-immunization"
+      ]
+    },
+    "language": "en-US",
+    "text": {
+      "status": "generated",
+      "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">DTaP-Hib-IPV</div>"
+    },
+    "identifier": [
+      {
+        "system": "urn:oid:2.16.840.1.113883.3.3619.13",
+        "value": "17085464"
+      }
+    ],
+    "status": "completed",
+    "vaccineCode": {
+      "coding": [
+        {
+          "system": "http://hl7.org/fhir/sid/cvx",
+          "code": "120",
+          "display": "DTaP-Hib-IPV"
+        }
+      ]
+    },
+    "patient": {
+      "reference": "Patient/6221fa2f6ee156303171f776",
+      "display": "Russell Richardson"
+    },
+    "occurrenceDateTime": "2017-07-06T15:44:00.000Z",
+    "lotNumber": "526434",
+    "performer": [
+      {
+        "actor": {
+          "reference": "Practitioner/6221fa2d95c17c0009697afc",
+          "identifier": {
+            "system": "urn:oid:2.16.840.1.113883.3.3619.3",
+            "value": "46546"
+          },
+          "display": "MD Wilma Thomas"
+        }
+      }
+    ]
+  }
+}
