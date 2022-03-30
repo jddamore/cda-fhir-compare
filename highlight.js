@@ -95,13 +95,15 @@ const addr = function (thing, data) {
 
 const code = function (thing, data) {
   for (let i = 0; i < thing.length; i++) {
-    if (thing[i].code) data.push(thing[i].code);
-    if (thing[i].codeSystem) data.push(thing[i].codeSystem); 
-    if (thing[i].displayName) data.push(thing[i].displayName); 
-    if (thing[i].originalText) originalText(thing[i].originalText, data);  
-    if (thing[i].translation) code(thing[i].translation, data);
+    if (thing && thing[i]) {
+      if (thing[i].code) data.push(thing[i].code);
+      if (thing[i].codeSystem) data.push(thing[i].codeSystem); 
+      if (thing[i].displayName) data.push(thing[i].displayName); 
+      if (thing[i].originalText) originalText(thing[i].originalText, data);  
+      if (thing[i].translation) code(thing[i].translation, data);
+    }  
   }
-}
+};
 
 const consumable = function (thing, data) {
   if (thing[0] && thing[0].manufacturedProduct && thing[0].manufacturedProduct[0] && thing[0].manufacturedProduct[0].manufacturedMaterial && thing[0].manufacturedProduct[0].manufacturedMaterial[0]) {
@@ -117,7 +119,6 @@ const consumable = function (thing, data) {
 const effectiveTime = function (thing, data) {
   for (let i = 0; i < thing.length; i++) {
     if (thing[i].value) {
-      console.log(thing[i].value);
       data.push(thing[i].value);
       if (thing[i].unit) {
         data.push(thing[i].unit);
@@ -147,11 +148,10 @@ const originalText = function (thing, data) {
   if (thing[0].reference) {
     if (thing[0].reference[0].value) data.push(thing[0].reference[0].value);
   }
-  else if (typeof(thing[0]) === 'string' || thing[0] instanceof String) data.push(...thing[0]);
+  else if (typeof(thing[0]) === 'string' || thing[0] instanceof String) data.push(...thing);
 }
 
 const name = function (thing, data) {
-  console.log(thing)
   if (thing[0].given || thing[0].family) {
     if (thing[0].given && thing[0].given.length) {
       for (let i = 0; i < thing[0].given.length; i++) {
@@ -522,7 +522,6 @@ const substanceAdministration = function (thing, data) {
     author(thing[0].author, data);
   }
   if (thing[0].performer){
-    console.log('PERF!!!!!!!!!!')
     performer(thing[0].performer, data);
   }
 }
@@ -585,7 +584,7 @@ const match = function (fhirStuff, data) {
   for (let i = 0; i < data.length; i++) {
     if (!prior[data[i]]) {
       let initialLength = matches.cda.length;
-      if (fhirStuff.includes( '"' + data[i], 'gm') || fhirStuff.includes("'" + data[i], 'gm') ) {
+      if (fhirStuff.includes( '"' + data[i] + '"', 'gm') || fhirStuff.includes("'" + data[i] + "'", 'gm') ) {
         matches.cda.push({string: data[i], color: colorIndex});
         matches.fhir.push({string: data[i], color: colorIndex});
         prior[data[i]] = true;
@@ -647,6 +646,7 @@ const mark = function (cda, fhir, matches) {
   }
   // console.log(cdaOutput);
   // console.log(fhirOutput);
+  // console.log(template);
   let newHtml = template.replace('<div id="cda" class="border codeArea">', `<div id="cda" class="border codeArea">${cdaOutput}`);
   newHtml = newHtml.replace('<div id="fhir" class="border codeArea">', `<div id="fhir" class="border codeArea">${fhirOutput}`);
   return newHtml;
@@ -717,12 +717,14 @@ const run = function (cdaStuff, fhirStuff) {
     fs.mkdirSync('debug');
     setTimeout(function() {
       fs.writeFileSync(`./debug/${identifier}.xml`, cdaStuff);
+      //fs.writeFileSync(`./debug/${identifier}.html`, html);
       fs.writeFileSync(`./debug/${identifier}.json`, fhirStuff);    
       return html;
     }, 1000);
   }
   else {
     fs.writeFileSync(`./debug/${identifier}.xml`, cdaStuff);
+    // fs.writeFileSync(`./debug/${identifier}.html`, html);
     fs.writeFileSync(`./debug/${identifier}.json`, fhirStuff);    
     return html;
   }
