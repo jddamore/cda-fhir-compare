@@ -220,7 +220,7 @@
       alert('This is an example allergy.');
       $.ajax({
         type: "get",
-        url: "/examples/allergy/example.txt",
+        url: "/examples/allergy/cgp_mapping_1.txt",
         success: function(data) {
             $('#code1').val(vkbeautify.xml(data, 2));
             line_counter1(lineCounter1);
@@ -232,7 +232,7 @@
       });
       $.ajax({
         type: "get",
-        url: "/examples/allergy/example.json",
+        url: "/examples/allergy/cgp_mapping_1.json",
         dataType: "json",
         success: function(data) {
             /* handle data here */

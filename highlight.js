@@ -21,7 +21,7 @@ let options = {
 
 // Translation of elements
 const translation = {
-  '2.16.840.1.113883.6.96' : 'https://www.snomed.org/|http://www.snomed.org/',
+  '2.16.840.1.113883.6.96' : 'https://www.snomed.org/|http://www.snomed.org/|https://snomed.info/sct|http://snomed.info/sct',
   '2.16.840.1.113883.6.88' : 'https://www.nlm.nih.gov/research/umls/rxnorm|http://www.nlm.nih.gov/research/umls/rxnorm',
   '2.16.840.1.113883.6.1' : 'https://loinc.org|http://loinc.org',
   '2.16.840.1.113883.6.90' : 'https://www.cms.gov/Medicare/Coding/ICD10|http://www.cms.gov/Medicare/Coding/ICD10',
@@ -610,17 +610,30 @@ const match = function (fhirStuff, data) {
         }
       }
       else if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
-        let iso = dateTranslate(data[i]);
-        if (iso) {
-          let start = iso.slice(0,11);
-          let end = iso.slice(13,16);
-          let re = new RegExp(start + '..' + end, 'gm');
-          let results = fhirStuff.match(re)
+        if (data[i].length < 9) {
+          let re = data[i];
+          if (data[i].length === 8) re = data[i].slice(0,4) + '-' + data[i].slice(4,6) + '-' + data[i].slice(6,8);   
+          else if (data[i].length === 6) re = data[i].slice(0,4) + '-' + data[i].slice(4,6);
+          let results = fhirStuff.match(re);
           if (results && results.length) {
             matches.cda.push({string: data[i], color: colorIndex});
             matches.fhir.push({string: results[0], color: colorIndex});
             prior[data[i]] = true; 
           }
+        }
+        else {
+          let iso = dateTranslate(data[i]);
+          if (iso) {
+            let start = iso.slice(0,11);
+            let end = iso.slice(13,16);
+            let re = new RegExp(start + '..' + end, 'gm');
+            let results = fhirStuff.match(re)
+            if (results && results.length) {
+              matches.cda.push({string: data[i], color: colorIndex});
+              matches.fhir.push({string: results[0], color: colorIndex});
+              prior[data[i]] = true; 
+            }
+          }  
         }
       }
       if (matches.cda.length !== initialLength) colorIndex++;  
