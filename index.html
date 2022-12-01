@@ -78,16 +78,22 @@
   </header>
   -->
   <main>
-    <h1><img src="/assets/cda-favicon.png" style="height:40px">&nbsp;<mark class="color36">CDA</mark>-<mark class="color13">FHIR</mark> Visualizer Tool&nbsp;<img src="/assets/fhir.png" style="height:40px"></h1>
+    <h1><img src="/assets/cda-favicon.png" style="height:40px">&nbsp;<mark class="color14">CDA</mark>-<mark class="color13">FHIR</mark> Visualizer Tool&nbsp;<img src="/assets/fhir.png" style="height:40px"></h1>
     <p class="col-md-12">This beta tool allows users to submit a CDA entry and FHIR resource and visualize how the data flow using selective data highlighting. It does not provide a mapping between formats. For more on the HL7 projects for mapping CDA/FHIR, please see <a href="https://confluence.hl7.org/display/CGP/C-CDA+to+and+from+US+Core+Mapping">US C-CDA to and from US Core Mapping</a></p>
 
     <hr class="col-md-12 mb-20">
 
     <div class="mb-2">
-      <button id="example" class="btn btn-primary btn-lg px-4">Load an example</button>
-      <button id="formatButton" class="btn btn-primary btn-lg px-4">Format XML & JSON</button>
-      <button id="submit" class="btn btn-success btn-lg px-4">Submit Code Below</button>
+      <button id="allergyButton" class="btn btn-primary btn-lg px-4">Load Allergy example</button>
+      <button id="immunizationButton" class="btn btn-primary btn-lg px-4">Load Immunization example</button>
+      <button id="patientButton" class="btn btn-primary btn-lg px-4">Load Patient example</button>
+      <button id="problemButton" class="btn btn-primary btn-lg px-4">Load Problem example</button>
+    </div>
+
+    <div class="mb-2">
       <button id="clear" class="btn btn-danger btn-lg px-4">Clear</button>
+      <button id="formatButton" class="btn btn-secondary btn-lg px-4">Format XML & JSON</button>
+      <button id="submit" class="btn btn-success btn-lg px-4">Submit Code Below</button>
     </div>
 
     <div class="row g-5">
@@ -95,7 +101,7 @@
           <div class="col-md-11">
             <div style="height: 150px">
               <h2>Place CDA Entry Here</h2>
-              <p>CDA must begin with &lt;entry&gt; tag and include only a single entry. If you copy unformatted XML, please use "Format Code" button above before pressing "Submit". This tool does not validate CDA content and invalid CDA may not generate appropriate highlighting</p>
+              <p>CDA must begin with &lt;entry&gt; or &lt;recordTarget&gt; tag and include only a single entry or patient. If you copy unformatted XML, please use "Format Code" button above before pressing "Submit". This tool does not validate CDA content and invalid CDA may not generate appropriate highlighting</p>
               <!--
               <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
@@ -215,12 +221,27 @@
       line_counter2(lineCounter2);
     })
 
-    var getExample = $('#example');
-    getExample.click(function () {
-      alert('This is an example allergy.');
+    $('#allergyButton').click(function () {
+      getData('allergy')
+    });
+
+    $('#immunizationButton').click(function () {
+      getData('immunization')
+    });
+
+    $('#patientButton').click(function () {
+      getData('patient')
+    });
+
+    $('#problemButton').click(function () {
+      getData('problem')
+    });
+
+    var getData = function (type) {
+      alert(`This is a reconciled example of ${type}.`);
       $.ajax({
         type: "get",
-        url: "/examples/allergy/cgp_mapping_1.txt",
+        url: `/examples/ccda-fhir-project/Rec_${type}.txt`,
         success: function(data) {
             $('#code1').val(vkbeautify.xml(data, 2));
             line_counter1(lineCounter1);
@@ -232,7 +253,7 @@
       });
       $.ajax({
         type: "get",
-        url: "/examples/allergy/cgp_mapping_1.json",
+        url: `/examples/ccda-fhir-project/Rec_${type}.json`,
         dataType: "json",
         success: function(data) {
             /* handle data here */
@@ -243,7 +264,9 @@
             alert('error loading')
         }
       });
-    });
+    } 
+
+   
 
     var submitData = $('#submit');
     submitData.click(function () {
@@ -252,7 +275,7 @@
       if(!cda) {
         alert('ERROR: No CDA content included')
       } 
-      else if (cda.slice(0,6) !== '<entry') {
+      else if (cda.slice(0,6) !== '<entry' && cda.slice(0,6) !== '<recor') {
         alert('ERROR: CDA not formatted properly');
       }
       else if (!fhir){

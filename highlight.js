@@ -24,8 +24,7 @@ const translation = {
   '2.16.840.1.113883.6.96' : 'https://www.snomed.org/|http://www.snomed.org/|https://snomed.info/sct|http://snomed.info/sct',
   '2.16.840.1.113883.6.88' : 'https://www.nlm.nih.gov/research/umls/rxnorm|http://www.nlm.nih.gov/research/umls/rxnorm',
   '2.16.840.1.113883.6.1' : 'https://loinc.org|http://loinc.org',
-  '2.16.840.1.113883.6.90' : 'https://www.cms.gov/Medicare/Coding/ICD10|http://www.cms.gov/Medicare/Coding/ICD10',
-  '2.16.840.1.113883.6.103' : 'https://www.cms.gov/Medicare/Coding/ICD9|http://www.cms.gov/Medicare/Coding/ICD9',
+  '2.16.840.1.113883.6.90' : 'http://hl7.org/fhir/sid/icd-10-cm',
   '2.16.840.1.113883.6.69': 'https://hl7.org/fhir/sid/ndc|http://hl7.org/fhir/sid/ndc',
   '2.16.840.1.113883.6.101': 'https://terminology.hl7.org/CodeSystem/v3-nuccProviderCodes|http://terminology.hl7.org/CodeSystem/v3-nuccProviderCodes|https://nucc.org/provider-taxonomy|http://nucc.org/provider-taxonomy',
   '2.16.840.1.113883.5.4': 'https://hl7.org/fhir/v3/ActCode|http://hl7.org/fhir/v3/ActCode',
@@ -87,10 +86,10 @@ const addr = function (thing, data) {
       if (thing[0].streetAddressLine[i][0]) data.push(thing[0].streetAddressLine[i][0]);
     }
   }
-  if (thing[0].city[0]) data.push(thing[0].city[0]);
-  if (thing[0].state[0]) data.push(thing[0].state[0]);
-  if (thing[0].postalCode[0]) data.push(thing[0].postalCode[0]);
-  if (thing[0].country[0]) data.push(thing[0].country[0]);
+  if (thing[0].city && thing[0].city[0]) data.push(thing[0].city[0]);
+  if (thing[0].state && thing[0].state[0]) data.push(thing[0].state[0]);
+  if (thing[0].postalCode && thing[0].postalCode[0]) data.push(thing[0].postalCode[0]);
+  if (thing[0].country && thing[0].country[0]) data.push(thing[0].country[0]);  
 }
 
 const code = function (thing, data) {
@@ -161,12 +160,17 @@ const name = function (thing, data) {
     if (thing[0].family && thing[0].family[0]) data.push(thing[0].family[0]);
   }
   else if (typeof(thing[0]) === 'string' || thing[0] instanceof String) {
-    data.push(...thing[0]);
+    data.push(thing[0]);
   }
 }
 
 const participant = function (thing, data) {
   if (thing[0].participantRole && thing[0].participantRole[0] && thing[0].participantRole[0].playingEntity && thing[0].participantRole[0].playingEntity[0] && thing[0].participantRole[0].playingEntity[0].code) code(thing[0].participantRole[0].playingEntity[0].code, data);
+}
+
+const telecom = function (thing, data) {
+  if (thing[0].use) data.push(thing[0].use);
+  if (thing[0].value) data.push(thing[0].value);
 }
 
 const value = function (thing, data) {
@@ -648,14 +652,27 @@ const mark = function (cda, fhir, matches) {
   let cdaOutput = escape(cda);
   let fhirOutput = escape(fhir);
   for (let i = 0; i < matches.cda.length; i++) {
-    let match = new RegExp(matches.cda[i].string, 'g');
+    let stringreplace = matches.cda[i].string;
+    if (stringreplace.length < 4) {
+      stringreplace = `&quot;${stringreplace}&quot;`;
+    }
+    let match = new RegExp(stringreplace, 'g');
+    if (!cdaOutput.match(match)) {
+      stringreplace = matches.cda[i].string;
+      stringreplace = `&gt;${stringreplace}&lt;`;
+      match = new RegExp(stringreplace, 'g');
+    }
     // console.log(match);
     // console.log(cdaOutput.match(match));
-    cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${matches.cda[i].string}</mark>`)
+    cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${stringreplace}</mark>`)
   }
   for (let i = 0; i < matches.cda.length; i++) {
-    let match = new RegExp(matches.fhir[i].string, 'g');
-    fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${matches.fhir[i].string}</mark>`)
+    let stringreplace2 = matches.fhir[i].string;
+    if (stringreplace2.length < 4) {
+      stringreplace2 = `&quot;${stringreplace2}&quot;`;
+    }
+    let match = new RegExp(stringreplace2, 'g');
+    fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${stringreplace2}</mark>`)
   }
   // console.log(cdaOutput);
   // console.log(fhirOutput);
@@ -670,8 +687,8 @@ const mark = function (cda, fhir, matches) {
 const run = function (cdaStuff, fhirStuff) {
   let cda = parser.toJson(cdaStuff, options);
   let fhir = null;
-  if (!cda.entry) {
-    return 'ERROR: Not a CDA entry';
+  if (!cda.entry && !cda.recordTarget) {
+    return 'ERROR: Not a CDA entry or recordTarget';
   }
   if (typeof(fhirStuff) === 'string') {
     try {
@@ -690,34 +707,72 @@ const run = function (cdaStuff, fhirStuff) {
     return 'ERROR: Not a FHIR resource';
   }
   let data = [];
-  for (let i = 0; i < cda.entry.length; i++) {
-    if (cda.entry[i].act) {
-      act(cda.entry[i].act, data);
+  if (cda.recordTarget && cda.recordTarget[0] && cda.recordTarget[0].patientRole && cda.recordTarget[0].patientRole[0]) {
+    if (cda.recordTarget[0].patientRole[0].id) {
+      id(cda.recordTarget[0].patientRole[0].id, data);
     }
-    else if (cda.entry[i].observation)  {
-      observation(cda.entry[i].observation, data);
+    if (cda.recordTarget[0].patientRole[0].addr) {
+      addr(cda.recordTarget[0].patientRole[0].addr, data);
     }
-    else if (cda.entry[i].substanceAdministration) {
-      substanceAdministration(cda.entry[i].substanceAdministration, data);
+    if (cda.recordTarget[0].patientRole[0].telecom){
+      telecom(cda.recordTarget[0].patientRole[0].telecom, data);
     }
-    else if (cda.entry[i].procedure) {
-      procedure(cda.entry[i].procedure, data);
+    if (cda.recordTarget[0].patientRole[0].patient && cda.recordTarget[0].patientRole[0].patient[0]) {
+      if (cda.recordTarget[0].patientRole[0].patient[0].name) {
+        name(cda.recordTarget[0].patientRole[0].patient[0].name, data);
+      }
+      if (cda.recordTarget[0].patientRole[0].patient[0].administrativeGenderCode) {
+        code(cda.recordTarget[0].patientRole[0].patient[0].administrativeGenderCode, data);
+      }
+      if (cda.recordTarget[0].patientRole[0].patient[0].birthTime) {
+        effectiveTime(cda.recordTarget[0].patientRole[0].patient[0].birthTime, data);
+      }
+      if (cda.recordTarget[0].patientRole[0].patient[0].raceCode) {
+        code(cda.recordTarget[0].patientRole[0].patient[0].raceCode, data);
+      }
+      if (cda.recordTarget[0].patientRole[0].patient[0].ethnicGroupCode) {
+        code(cda.recordTarget[0].patientRole[0].patient[0].ethnicGroupCode, data);
+      }
+      if (cda.recordTarget[0].patientRole[0].patient[0].languageCommunication && cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0]) {
+        if(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].languageCode) {
+          code(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].languageCode, data);
+        }
+        if(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].preferenceInd) {
+          value(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].preferenceInd, data);
+        }
+      }
     }
-    else if (cda.entry[i].supply) {
-      supply(cda.entry[i].supply, data);
-    }
-    else if (cda.entry[i].organizer) {
-      organizer(cda.entry[i].organizer, data);
-    }
-    else if (cda.entry[i].encounter) {
-      encounter(cda.entry[i].encounter, data);
-    }
-    else {
-      console.log(`skipping ${cda} from main entry`);
+  }
+  else {
+    for (let i = 0; i < cda.entry.length; i++) {
+      if (cda.entry[i].act) {
+        act(cda.entry[i].act, data);
+      }
+      else if (cda.entry[i].observation)  {
+        observation(cda.entry[i].observation, data);
+      }
+      else if (cda.entry[i].substanceAdministration) {
+        substanceAdministration(cda.entry[i].substanceAdministration, data);
+      }
+      else if (cda.entry[i].procedure) {
+        procedure(cda.entry[i].procedure, data);
+      }
+      else if (cda.entry[i].supply) {
+        supply(cda.entry[i].supply, data);
+      }
+      else if (cda.entry[i].organizer) {
+        organizer(cda.entry[i].organizer, data);
+      }
+      else if (cda.entry[i].encounter) {
+        encounter(cda.entry[i].encounter, data);
+      }
+      else {
+        console.log(`skipping ${cda} from main entry`);
+      }
     }
   }
   console.log(data);
-
+  
   let matches = match(fhirStuff, data)
   // console.log(matches);
 
@@ -740,7 +795,7 @@ const run = function (cdaStuff, fhirStuff) {
     // fs.writeFileSync(`./debug/${identifier}.html`, html);
     fs.writeFileSync(`./debug/${identifier}.json`, fhirStuff);    
     return html;
-  }
+  }  
 }
 
 module.exports = run;
