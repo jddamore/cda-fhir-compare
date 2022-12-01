@@ -106,11 +106,14 @@ const code = function (thing, data) {
 
 const consumable = function (thing, data) {
   if (thing[0] && thing[0].manufacturedProduct && thing[0].manufacturedProduct[0] && thing[0].manufacturedProduct[0].manufacturedMaterial && thing[0].manufacturedProduct[0].manufacturedMaterial[0]) {
+    // console.log('In consumable');
+    console.log(thing[0].manufacturedProduct[0].manufacturedMaterial[0])
     if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].code) {
       code(thing[0].manufacturedProduct[0].manufacturedMaterial[0].code, data);
     }
-    if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumber && thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumber[0]) {
-      data.push(thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumber[0]);
+    if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText && thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText[0]) {
+      // console.log('In lotNumber');
+      data.push(thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText[0]);
     }
   }
 }
@@ -165,7 +168,9 @@ const name = function (thing, data) {
 }
 
 const participant = function (thing, data) {
-  if (thing[0].participantRole && thing[0].participantRole[0] && thing[0].participantRole[0].playingEntity && thing[0].participantRole[0].playingEntity[0] && thing[0].participantRole[0].playingEntity[0].code) code(thing[0].participantRole[0].playingEntity[0].code, data);
+  if (thing[0].participantRole && thing[0].participantRole[0] && thing[0].participantRole[0].playingEntity && thing[0].participantRole[0].playingEntity[0] && thing[0].participantRole[0].playingEntity[0].code) {
+    code(thing[0].participantRole[0].playingEntity[0].code, data);
+  }
 }
 
 const telecom = function (thing, data) {
