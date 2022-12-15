@@ -126,6 +126,14 @@ const effectiveTime = function (thing, data) {
         data.push(thing[i].unit);
       }
     }
+    else if (thing[i].period && thing[i].period[0]) {
+      if (thing[i].period[0].value){
+        data.push(thing[i].period[0].value);
+      }
+      if (thing[i].period[0].unit) {
+        data.push(thing[i].period[0].unit);
+      }
+    }
     else {
       if (thing[i].low && thing[i].low[0] && thing[i].low[0].value) {
         data.push(thing[i].low[0].value);
@@ -607,6 +615,11 @@ const match = function (fhirStuff, data) {
         matches.fhir.push({string: data[i], color: colorIndex});
         prior[data[i]] = true;
       }
+      else if (fhirStuff.includes(' ' + data[i] + ',', 'gm')) {
+        matches.cda.push({string: data[i], color: colorIndex});
+        matches.fhir.push({string: data[i], color: colorIndex, number: true});
+        prior[data[i]] = true;
+      }
       else if (translation[data[i]]) {
         let pieces = translation[data[i]].split('|')
         for (let j = 0; j < pieces.length; j++) {
@@ -672,8 +685,12 @@ const mark = function (cda, fhir, matches) {
   }
   for (let i = 0; i < matches.cda.length; i++) {
     let stringreplace2 = matches.fhir[i].string;
-    if (stringreplace2.length < 4) {
+    if (stringreplace2.length < 4 && !matches.fhir[i].number) {
       stringreplace2 = `&quot;${stringreplace2}&quot;`;
+    }
+    // how to handle integers, will highlight comma
+    else if (stringreplace2.length < 4) {
+      stringreplace2 = `${stringreplace2},`;
     }
     let match = new RegExp(stringreplace2, 'g');
     fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${stringreplace2}</mark>`)
