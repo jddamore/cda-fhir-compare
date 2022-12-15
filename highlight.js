@@ -566,7 +566,6 @@ const supply = function (thing, data) {
 }
 
 // Operations for Mapping
-
 const dateTranslate = function (thing) {
   let output = null
   try {
@@ -712,6 +711,7 @@ const run = function (cdaStuff, fhirStuff) {
     return 'ERROR: Not a FHIR resource';
   }
   let data = [];
+  
   if (cda.recordTarget && cda.recordTarget[0] && cda.recordTarget[0].patientRole && cda.recordTarget[0].patientRole[0]) {
     if (cda.recordTarget[0].patientRole[0].id) {
       id(cda.recordTarget[0].patientRole[0].id, data);
@@ -776,6 +776,21 @@ const run = function (cdaStuff, fhirStuff) {
       }
     }
   }
+
+  // Process XML comments of resolves to
+  let r = new RegExp(/<!--[\s\S\n]*?-->/gm);
+  let comments = cdaStuff.match(r);
+  
+  if (comments && comments.length) {
+    for (let i = 0; i < comments.length; i++) {
+      let pieces = comments[i].split(': ')
+      if (pieces[1]) {
+        let output = pieces[1].replace(' -->', '');
+        data.push(output);
+      }  
+    }  
+  }
+  
   console.log(data);
   
   let matches = match(fhirStuff, data)
