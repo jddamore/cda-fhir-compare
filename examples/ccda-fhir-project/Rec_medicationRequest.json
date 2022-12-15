@@ -26,6 +26,9 @@
 	 "dosageInstruction": [
       {
         "timing": {
+          "boundsPeriod": {
+            "start": "2022-08-06"
+          },
           "repeat": {
             "frequency": 1,
             "period": 1,
