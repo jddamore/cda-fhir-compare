@@ -86,6 +86,7 @@
     <div class="mb-2">
       <button id="allergyButton" class="btn btn-primary btn-lg px-4">Load Allergy example</button>
       <button id="immunizationButton" class="btn btn-primary btn-lg px-4">Load Immunization example</button>
+      <button id="medicationButton" class="btn btn-primary btn-lg px-4">Load Medication example</button>
       <button id="patientButton" class="btn btn-primary btn-lg px-4">Load Patient example</button>
       <button id="problemButton" class="btn btn-primary btn-lg px-4">Load Problem example</button>
     </div>
@@ -227,6 +228,10 @@
 
     $('#immunizationButton').click(function () {
       getData('immunization')
+    });
+
+    $('#medicationButton').click(function () {
+      getData('medicationRequest')
     });
 
     $('#patientButton').click(function () {

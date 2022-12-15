@@ -31,13 +31,12 @@
           "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
           "code": "1191"
         },
-        {
-		                                                                                      
-		                                                        
+        {                                       
           "code": "293586001",
           "system": "http://snomed.info/sct"
         }
-      ]
+      ],
+      "text": "aspirin"
     },
     "patient": {
       "reference": "Patient/62f17e29b7532c0009e217b7"
@@ -53,12 +52,12 @@
                 "system": "http://snomed.info/sct",
                 "code": "247472004"
               }
-            ]
+            ],
+            "text":"Hives"
           }
         ],
         "severity": "severe"
       }
     ]
-  }
-                                                                                                                                                                               
+  }                                                                                                                                                                               
 }
