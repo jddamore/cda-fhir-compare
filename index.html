@@ -89,6 +89,7 @@
       <button id="medicationButton" class="btn btn-primary btn-lg px-4">Load Medication example</button>
       <button id="patientButton" class="btn btn-primary btn-lg px-4">Load Patient example</button>
       <button id="problemButton" class="btn btn-primary btn-lg px-4">Load Problem example</button>
+      <button id="procedureButton" class="btn btn-primary btn-lg px-4">Load Procedure example</button>
     </div>
 
     <div class="mb-2">
@@ -242,6 +243,10 @@
       getData('problem')
     });
 
+    $('#procedureButton').click(function () {
+      getData('procedure')
+    });
+
     var getData = function (type) {
       alert(`This is a reconciled example of ${type}.`);
       $.ajax({
@@ -270,9 +275,7 @@
         }
       });
     } 
-
    
-
     var submitData = $('#submit');
     submitData.click(function () {
       var cda = $('#code1').val();
