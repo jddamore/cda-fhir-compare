@@ -34,7 +34,8 @@ const translation = {
   '2.16.840.1.113883.6.104': 'https://hl7.org/fhir/sid/icd-9-cm|http://hl7.org/fhir/sid/icd-9-cm',
   '2.16.840.1.113883.6.4': 'https://www.icd10data.com/icd10pcs|http://www.icd10data.com/icd10pcs',
   '2.16.840.1.113883.3.26.1.1': 'https://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl|http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl',
-  '2.16.840.1.113883.5.83': 'https://hl7.org/fhir/v3/ObservationInterpretation|http://hl7.org/fhir/v3/ObservationInterpretation'
+  '2.16.840.1.113883.5.83': 'https://hl7.org/fhir/v3/ObservationInterpretation|http://hl7.org/fhir/v3/ObservationInterpretation',
+  '46680005': 'vital-signs'
 };
 
 /*
@@ -201,6 +202,7 @@ const value = function (thing, data) {
 // HIGHER LEVEL CDA FUNCTIONs
 
 const act = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing[0].id) {
     id(thing[0].id, data);
   }
@@ -228,6 +230,7 @@ const act = function (thing, data) {
 }
 
 const author = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing & thing[0]) {
     if (thing[0].functionCode) {
       code(thing[0].functionCode, data);
@@ -270,6 +273,7 @@ const author = function (thing, data) {
 }
 
 const encounter = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing[0].id) {
     id(thing[0].id, data);
   }
@@ -297,6 +301,7 @@ const encounter = function (thing, data) {
 }
 
 const entryRelationship = function (thing, data) {
+  if (!thing?.[0]) return;
   for (let i = 0; i < thing.length; i++) {
     if (thing[i].act) {
       act(thing[i].act, data);
@@ -323,6 +328,7 @@ const entryRelationship = function (thing, data) {
 }
 
 const observation = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing[0].id) {
     id(thing[0].id, data);
   }
@@ -376,6 +382,7 @@ const observation = function (thing, data) {
 }
 
 const organizer = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing[0].id) {
     id(thing[0].id, data);
   }
@@ -401,6 +408,7 @@ const organizer = function (thing, data) {
 }
 
 const performer = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing && thing[0] && thing[0].assignedEntity) {
     thing = thing[0].assignedEntity;
     if (thing[0].id) {
@@ -447,6 +455,7 @@ const performer = function (thing, data) {
 }
 
 const procedure = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing[0].id) {
     id(thing[0].id, data);
   }
@@ -490,6 +499,7 @@ const procedure = function (thing, data) {
 }
 
 const substanceAdministration = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing[0].id) {
     id(thing[0].id, data);
   }
@@ -544,6 +554,7 @@ const substanceAdministration = function (thing, data) {
 }
 
 const supply = function (thing, data) {
+  if (!thing?.[0]) return;
   if (thing[0].id) {
     id(thing[0].id, data);
   }
@@ -708,8 +719,10 @@ const mark = function (cda, fhir, matches) {
 const run = function (cdaStuff, fhirStuff) {
   let cda = parser.toJson(cdaStuff, options);
   let fhir = null;
-  if (!cda.entry && !cda.recordTarget) {
-    return 'ERROR: Not a CDA entry or recordTarget';
+  const clinicalStatements = ['allergyIntolerance', 'encounter', 'observation', 'procedure', 'substanceAdministration', 'supply', 'organizer'];
+  const supportedEntries = ['recordTarget', 'entry', ...clinicalStatements];
+  if (!supportedEntries.find(entry => !!cda[entry])) {
+    return 'ERROR: Expecting to find one of the following elements: ' + supportedEntries.join(', ');
   }
   if (typeof(fhirStuff) === 'string') {
     try {
@@ -723,7 +736,7 @@ const run = function (cdaStuff, fhirStuff) {
     fhir = fhirStuff;
     fhirStuff = JSON.stringify(fhir);
   }
-  if (!fhir || !fhir.resource) {
+  if (!fhir || (!fhir.resource && !fhir.resourceType)) {
     // console.log(fhir);
     return 'ERROR: Not a FHIR resource';
   }
@@ -766,30 +779,16 @@ const run = function (cdaStuff, fhirStuff) {
     }
   }
   else {
-    for (let i = 0; i < cda.entry.length; i++) {
-      if (cda.entry[i].act) {
-        act(cda.entry[i].act, data);
+    for (const clinicalStatement of clinicalStatements) {
+      if (cda[clinicalStatement]) {
+        eval(`${clinicalStatement}(cda[clinicalStatement], data)`);
       }
-      else if (cda.entry[i].observation)  {
-        observation(cda.entry[i].observation, data);
-      }
-      else if (cda.entry[i].substanceAdministration) {
-        substanceAdministration(cda.entry[i].substanceAdministration, data);
-      }
-      else if (cda.entry[i].procedure) {
-        procedure(cda.entry[i].procedure, data);
-      }
-      else if (cda.entry[i].supply) {
-        supply(cda.entry[i].supply, data);
-      }
-      else if (cda.entry[i].organizer) {
-        organizer(cda.entry[i].organizer, data);
-      }
-      else if (cda.entry[i].encounter) {
-        encounter(cda.entry[i].encounter, data);
-      }
-      else {
-        console.log(`skipping ${cda} from main entry`);
+    }
+    for (let i = 0; i < cda.entry?.length; i++) {
+      for (const clinicalStatement of ['act', 'observation', 'substanceAdministration', 'procedure', 'supply', 'organizer', 'encounter']) {
+        if (cda.entry[i][clinicalStatement]) {
+          eval(`${clinicalStatement}(cda.entry[i][clinicalStatement], data)`);
+        }
       }
     }
   }

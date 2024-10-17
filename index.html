@@ -283,23 +283,21 @@
       if(!cda) {
         alert('ERROR: No CDA content included')
       } 
-      else if (cda.slice(0,6) !== '<entry' && cda.slice(0,6) !== '<recor') {
-        alert('ERROR: CDA not formatted properly');
-      }
       else if (!fhir){
         alert('ERROR: No FHIR content included');
       }
       else {
-        var check = null
+        let check = null;
         try {
           check = JSON.parse(fhir);
         }
         catch(e){
-          check = null;
           alert('ERROR: FHIR is not proper JSON');
+          return;
         }
-        if (check && !check.resource) {
-          alert('ERROR: FHIR not formatted properly');
+        if (check && !check.resource && !check.resourceType) {
+          alert('ERROR: FHIR not formatted properly (missing a resource or resourceType property)');
+          return;
         }
         let data = {
           cda: cda,
