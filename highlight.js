@@ -130,28 +130,29 @@ const match = function (fhirStuff, data) {
   fhirStuff = fhirStuff.replace(/urn:oid:/gm, '');
   for (let i = 0; i < data.length; i++) {
     let initialLength = matches.cda.length;
+    const number = !isNaN(data[i]);
     if (fhirStuff.includes( '"' + data[i] + '"', 'gm') || fhirStuff.includes("'" + data[i] + "'", 'gm') ) {
       matches.cda.push({string: data[i], color: colorIndex});
-      matches.fhir.push({string: data[i], color: colorIndex});
+      matches.fhir.push({string: data[i], color: colorIndex, number});
     }
     else if (fhirStuff.includes(data[i] + '"', 'gm') || fhirStuff.includes(data[i] + "'", 'gm') ) {
       matches.cda.push({string: data[i], color: colorIndex});
-      matches.fhir.push({string: data[i], color: colorIndex});
+      matches.fhir.push({string: data[i], color: colorIndex, number});
     }
     else if (fhirStuff.includes(' ' + data[i] + ' ', 'gm')) {
       matches.cda.push({string: data[i], color: colorIndex});
-      matches.fhir.push({string: data[i], color: colorIndex});
+      matches.fhir.push({string: data[i], color: colorIndex, number});
     }
     else if (fhirStuff.includes(' ' + data[i] + ',', 'gm')) {
       matches.cda.push({string: data[i], color: colorIndex});
-      matches.fhir.push({string: data[i], color: colorIndex, number: true});
+      matches.fhir.push({string: data[i], color: colorIndex, number});
     }
     else if (translation[data[i]]) {
       let pieces = translation[data[i]].split('|')
       for (let j = 0; j < pieces.length; j++) {
         if (fhirStuff.includes(pieces[j])) {
           matches.cda.push({string: data[i], color: colorIndex});
-          matches.fhir.push({string: pieces[j], color: colorIndex});
+          matches.fhir.push({string: pieces[j], color: colorIndex, number});
         }
       }
     }
@@ -163,7 +164,7 @@ const match = function (fhirStuff, data) {
         let results = fhirStuff.match(re);
         if (results && results.length) {
           matches.cda.push({string: data[i], color: colorIndex});
-          matches.fhir.push({string: results[0], color: colorIndex});
+          matches.fhir.push({string: results[0], color: colorIndex, number});
         }
       }
       else {
@@ -175,7 +176,7 @@ const match = function (fhirStuff, data) {
           let results = fhirStuff.match(re)
           if (results && results.length) {
             matches.cda.push({string: data[i], color: colorIndex});
-            matches.fhir.push({string: results[0], color: colorIndex});
+            matches.fhir.push({string: results[0], color: colorIndex, number});
           }
         }  
       }
@@ -191,18 +192,21 @@ const mark = function (cda, fhir, matches) {
   let cdaOutput = escape(cda);
   let fhirOutput = escape(fhir);
   for (let i = 0; i < matches.cda.length; i++) {
-    let regExp = matches.cda[i].string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let toWrap = matches.cda[i].string
+    let regExp = toWrap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');  // Make string ready for RegExp (fixes things like `[]` in strings)
     if (regExp.length < 4) {
+      toWrap = `&quot;${toWrap}&quot;`;
       regExp = `&quot;${regExp}&quot;`;
     }
     let match = new RegExp(regExp, 'g');
     if (!cdaOutput.match(match)) {
+      toWrap = `&gt;${matches.cda[i].string}&lt;`;
       regExp = `&gt;${matches.cda[i].string}&lt;`;
       match = new RegExp(regExp, 'g');
     }
     // console.log(match);
     // console.log(cdaOutput.match(match));
-    cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${matches.cda[i].string}</mark>`)
+    cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${toWrap}</mark>`)
 
     // Translation
     if (translation[matches.cda[i].string]) {
@@ -213,17 +217,35 @@ const mark = function (cda, fhir, matches) {
     }
   }
   for (let i = 0; i < matches.fhir.length; i++) {
-    let regExp = matches.fhir[i].string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');;
+    let toWrap = matches.fhir[i].string;
+    let regExp = toWrap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');;
     if (regExp.length < 4) {
       // For numbers, also highlight the comma; otherwise, include the quotes
+      toWrap = matches.fhir[i].number ? `${toWrap},` : `&quot;${toWrap}&quot;`;
       regExp = matches.fhir[i].number ? `${regExp},` : `&quot;${regExp}&quot;`;
     }
     let match = new RegExp(regExp, 'g');
-    fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${matches.fhir[i].string}</mark>`)
+    fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${toWrap}</mark>`)
   }
   // console.log(cdaOutput);
   // console.log(fhirOutput);
   // console.log(template);
+
+  // Simple XML highlighting
+  cdaOutput = cdaOutput
+    .replace(/(&lt;\/?)([a-zA-Z0-9:._-]+)(\s|&gt;|$)/g, '$1<span class="field">$2</span>$3')
+    .replace(/(&lt;!--[\s\S\n]*?--&gt;)/g, '<span class="comment">$1</span>')
+    .replace(/(\s)([a-zA-Z0-9:._-]+=)(&quot;.*?&quot;)/g, '$1<span class="attrib">$2</span>$3')
+    .replace(/(&quot;.*?&quot;)/g, '<span class="value">$1</span>');
+  
+  // Simple JSON highlighting
+  fhirOutput = fhirOutput
+    .replace(/(\n\s+&quot;)([a-zA-Z0-9:._-]+)(&quot;)/g, '$1<span class="field">$2</span>$3')
+    // .replace(/(\n\s+)(\/\/.+)/g, '$1<span class="comment">$2</span')  Not allowed by current JSON formatter...
+    .replace(/(:\s+&quot;)(.*?)(&quot;)/g, '$1<span class="value">$2</span>$3')
+    .replace(/(:\s+)(\d+,)/g, '$1<span class="value">$2</span>');
+
+
   let newHtml = template.replace('<div id="cda" class="border codeArea">', `<div id="cda" class="border codeArea">${cdaOutput}`);
   newHtml = newHtml.replace('<div id="fhir" class="border codeArea">', `<div id="fhir" class="border codeArea">${fhirOutput}`);
   return newHtml;

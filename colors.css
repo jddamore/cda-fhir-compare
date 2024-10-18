@@ -3,6 +3,26 @@
   white-space: pre;
   overflow: scroll;
   overflow-x: scroll;
+  background: #f5f2f0; /* FHIR prism template */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.comment {
+  color: #999;
+}
+.field {
+  color: #2f6f9f;
+}
+.attrib {
+  color: #690;
+}
+.value {
+  color: #d44950;
+}
+
+mark span{
+  color: black !important;
 }
 
 .color10 {
@@ -104,4 +124,4 @@
 .color42 {
   background-color: #ff0000ff;
 }
-
+vocolodasfasdf
