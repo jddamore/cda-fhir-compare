@@ -103,7 +103,7 @@
           <div class="col-md-11">
             <div style="height: 150px">
               <h2>Place CDA Entry Here</h2>
-              <p>CDA must begin with &lt;entry&gt; or &lt;recordTarget&gt; tag and include only a single entry or patient. If you copy unformatted XML, please use "Format Code" button above before pressing "Submit". This tool does not validate CDA content and invalid CDA may not generate appropriate highlighting</p>
+              <p>Document must contain only a single element. If you copy unformatted XML, please use "Format Code" button above before pressing "Submit". This tool does not validate CDA content and invalid CDA may not generate appropriate highlighting</p>
               <!--
               <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
@@ -125,7 +125,7 @@
         <div class="col-md-11">
           <div style="height: 150px">
             <h2>Place FHIR Resource Here</h2>
-            <p>Only a single FHIR resource should be included as JSON. The base property should look like { "resource": {THE ACTUAL CONTENT HERE} }. If you copy unformatted JSON, please use "Format Code" button above before pressing "Submit". This tool does not validate FHIR content and only accepts JSON</p>
+            <p>Only a single FHIR resource should be included as JSON. If you copy unformatted JSON, please use "Format Code" button above before pressing "Submit". This tool does not validate FHIR content and only accepts JSON.</p>
             <!--
             <div class="dropdown">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton2" data-bs-toggle="dropdown" aria-expanded="false">
@@ -292,7 +292,7 @@
           check = JSON.parse(fhir);
         }
         catch(e){
-          alert('ERROR: FHIR is not proper JSON');
+          alert('ERROR: FHIR is not proper JSON ' + e.message);
           return;
         }
         if (check && !check.resource && !check.resourceType) {

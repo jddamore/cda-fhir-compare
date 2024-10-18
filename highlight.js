@@ -4,6 +4,7 @@ const fs = require('fs');
 const moment = require('moment');
 const { init } = require('express/lib/application');
 const { v4: uuidv4 } = require('uuid');
+const { add } = require('nodemon/lib/rules');
 
 // let xmlFile = fs.readFileSync('./examples/allergy/example.xml', 'utf-8');
 // let jsonFile = fs.readFileSync('./examples/allergy/example.json', 'utf-8');
@@ -19,11 +20,11 @@ let options = {
   alternateTextNode: false
 };
 
-// Translation of elements
+// Translation of elements (also re-highlights strings on CDA side)
 const translation = {
-  '2.16.840.1.113883.6.96' : 'https://www.snomed.org/|http://www.snomed.org/|https://snomed.info/sct|http://snomed.info/sct',
+  '2.16.840.1.113883.6.96' : 'https://www.snomed.org/|http://www.snomed.org/|https://snomed.info/sct|http://snomed.info/sct|SNOMED CT',
   '2.16.840.1.113883.6.88' : 'https://www.nlm.nih.gov/research/umls/rxnorm|http://www.nlm.nih.gov/research/umls/rxnorm',
-  '2.16.840.1.113883.6.1' : 'https://loinc.org|http://loinc.org',
+  '2.16.840.1.113883.6.1' : 'https://loinc.org|http://loinc.org|LOINC',
   '2.16.840.1.113883.6.90' : 'http://hl7.org/fhir/sid/icd-10-cm',
   '2.16.840.1.113883.6.69': 'https://hl7.org/fhir/sid/ndc|http://hl7.org/fhir/sid/ndc',
   '2.16.840.1.113883.6.101': 'https://terminology.hl7.org/CodeSystem/v3-nuccProviderCodes|http://terminology.hl7.org/CodeSystem/v3-nuccProviderCodes|https://nucc.org/provider-taxonomy|http://nucc.org/provider-taxonomy',
@@ -35,7 +36,7 @@ const translation = {
   '2.16.840.1.113883.6.4': 'https://www.icd10data.com/icd10pcs|http://www.icd10data.com/icd10pcs',
   '2.16.840.1.113883.3.26.1.1': 'https://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl|http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl',
   '2.16.840.1.113883.5.83': 'https://hl7.org/fhir/v3/ObservationInterpretation|http://hl7.org/fhir/v3/ObservationInterpretation',
-  '46680005': 'vital-signs'
+  '46680005': 'vital-signs|&quot;Vital Signs&quot;',
 };
 
 /*
@@ -78,509 +79,29 @@ UNII	http://fdasis.nlm.nih.gov	2.16.840.1.113883.4.9
 mediaType	http://hl7.org/fhir/v3/MediaType	2.16.840.1.113883.5.79
 */
 
-// LOWER LEVEL CDA FUNTIONS
-
-const addr = function (thing, data) {
-  if (thing[0].use) data.push(thing[0].use);
-  if (thing[0].streetAddressLine && thing[0].streetAddressLine.length) {
-    for (let i = 0; i < thing[0].streetAddressLine.length; i++) {
-      if (thing[0].streetAddressLine[i][0]) data.push(thing[0].streetAddressLine[i][0]);
+const addFields = function (thing, data) {
+  if (!thing) return;
+  if (Array.isArray(thing)) {
+    for (const item of thing) {
+      addFields(item, data);
     }
+    return;
   }
-  if (thing[0].city && thing[0].city[0]) data.push(thing[0].city[0]);
-  if (thing[0].state && thing[0].state[0]) data.push(thing[0].state[0]);
-  if (thing[0].postalCode && thing[0].postalCode[0]) data.push(thing[0].postalCode[0]);
-  if (thing[0].country && thing[0].country[0]) data.push(thing[0].country[0]);  
-}
 
-const code = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-    if (thing && thing[i]) {
-      if (thing[i].code) data.push(thing[i].code);
-      if (thing[i].codeSystem) data.push(thing[i].codeSystem); 
-      if (thing[i].displayName) data.push(thing[i].displayName); 
-      if (thing[i].originalText) originalText(thing[i].originalText, data);  
-      if (thing[i].translation) code(thing[i].translation, data);
-    }  
-  }
-};
-
-const consumable = function (thing, data) {
-  if (thing[0] && thing[0].manufacturedProduct && thing[0].manufacturedProduct[0] && thing[0].manufacturedProduct[0].manufacturedMaterial && thing[0].manufacturedProduct[0].manufacturedMaterial[0]) {
-    // console.log('In consumable');
-    console.log(thing[0].manufacturedProduct[0].manufacturedMaterial[0])
-    if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].code) {
-      code(thing[0].manufacturedProduct[0].manufacturedMaterial[0].code, data);
+  // Maaaaybe need to ignore some?
+  // There's also logic in the matcher to look for `<string>` so perhaps some field labels themselves should be highlighted?
+  for (const field of Object.keys(thing)) {
+    if (typeof thing[field] === 'string') {
+      data.push(thing[field]);
     }
-    if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText && thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText[0]) {
-      // console.log('In lotNumber');
-      data.push(thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText[0]);
-    }
-  }
-}
-
-const effectiveTime = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-    if (thing[i].value) {
-      data.push(thing[i].value);
-      if (thing[i].unit) {
-        data.push(thing[i].unit);
+    else if (Array.isArray(thing[field])) {
+      for (const item of thing[field]) {
+        addFields(item, data);
       }
     }
-    else if (thing[i].period && thing[i].period[0]) {
-      if (thing[i].period[0].value){
-        data.push(thing[i].period[0].value);
-      }
-      if (thing[i].period[0].unit) {
-        data.push(thing[i].period[0].unit);
-      }
+    else if (typeof thing[field] === 'object') {
+      addFields(thing[field], data);
     }
-    else {
-      if (thing[i].low && thing[i].low[0] && thing[i].low[0].value) {
-        data.push(thing[i].low[0].value);
-        if(thing[i].low[0].unit) data.push(thing[i].high[0].unit);
-      }
-      if (thing[i].high && thing[i].high[0] && thing[i].high[0].value) {
-        data.push(thing[i].high[0].value);
-        if(thing[i].high[0].unit) data.push(thing[i].high[0].unit);
-      }
-    }
-  }
-}
-
-const id = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-   if (thing[i].root) data.push(thing[i].root);
-   if (thing[i].extension) data.push(thing[i].extension); 
-  }
-}
-
-const originalText = function (thing, data) {
-  if (thing[0].reference) {
-    if (thing[0].reference[0].value) data.push(thing[0].reference[0].value);
-  }
-  else if (typeof(thing[0]) === 'string' || thing[0] instanceof String) data.push(...thing);
-}
-
-const name = function (thing, data) {
-  if (thing[0].given || thing[0].family) {
-    if (thing[0].given && thing[0].given.length) {
-      for (let i = 0; i < thing[0].given.length; i++) {
-        if (thing[0].given[i]) data.push(thing[0].given[i]);
-      }
-    }
-    if (thing[0].family && thing[0].family[0]) data.push(thing[0].family[0]);
-  }
-  else if (typeof(thing[0]) === 'string' || thing[0] instanceof String) {
-    data.push(thing[0]);
-  }
-}
-
-const participant = function (thing, data) {
-  if (thing[0].participantRole && thing[0].participantRole[0] && thing[0].participantRole[0].playingEntity && thing[0].participantRole[0].playingEntity[0] && thing[0].participantRole[0].playingEntity[0].code) {
-    code(thing[0].participantRole[0].playingEntity[0].code, data);
-  }
-}
-
-const telecom = function (thing, data) {
-  if (thing[0].use) data.push(thing[0].use);
-  if (thing[0].value) data.push(thing[0].value);
-}
-
-const value = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-    if (thing[i].value) data.push(thing[i].value);
-    if (thing[i].unit) data.push(thing[i].unit);
-    if (thing[i].code) data.push(thing[i].code);
-    if (thing[i].codeSystem) data.push(thing[i].codeSystem); 
-    if (thing[i].displayName) data.push(thing[i].displayName); 
-    if (thing[i].originalText) originalText(thing[i].originalText, data);  
-    if (thing[i].translation) code(thing[i].translation, data);
-  }
-}
-
-// HIGHER LEVEL CDA FUNCTIONs
-
-const act = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const author = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing & thing[0]) {
-    if (thing[0].functionCode) {
-      code(thing[0].functionCode, data);
-    }
-    if (thing[0].code) {
-      code(thing[0].code, data);
-    }
-    if (thing[0].time) {
-      effectiveTime(thing[0].time, data);
-    }
-    if (thing[0].assignedAuthor && thing[0].assignedAuthor[0]) {
-      if (thing[0].assignedAuthor[0].id) {
-        id(thing[0].assignedAuthor[0].id, data);
-      }
-      if (thing[0].assignedAuthor[0].code) {
-        code(thing[0].assignedAuthor[0].code, data);
-      }
-      if (thing[0].assignedAuthor[0].addr) {
-        addr(thing[0].assignedAuthor[0].addr, data);
-      }
-      if (thing[0].assignedAuthor[0].telecom) {
-        telecom(thing[0].assignedAuthor[0].telecom, data);
-      }
-      if (thing[0].assignedAuthor[0].assignedPerson && thing[0].assignedAuthor[0].assignedPerson[0]) {
-        if (thing[0].assignedAuthor[0].assignedPerson[0].id) {
-          id(thing[0].assignedAuthor[0].assignedPerson[0].id, data)
-        }
-        if (thing[0].assignedAuthor[0].assignedPerson[0].name) {
-          name(thing[0].assignedAuthor[0].assignedPerson[0].name, data)
-        }
-        if (thing[0].assignedAuthor[0].assignedPerson[0].addr) {
-          addr(thing[0].assignedAuthor[0].assignedPerson[0].addr, data)
-        }
-        if (thing[0].assignedAuthor[0].assignedPerson[0].telecom) {
-          telecom(thing[0].assignedAuthor[0].assignedPerson[0].telecom, data)
-        }
-      } 
-    }
-  }
-}
-
-const encounter = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const entryRelationship = function (thing, data) {
-  if (!thing?.[0]) return;
-  for (let i = 0; i < thing.length; i++) {
-    if (thing[i].act) {
-      act(thing[i].act, data);
-    }
-    else if (thing[i].encounter) {
-      encounter(thing[i].encounter, data);
-    } 
-    else if (thing[i].observation) {
-      observation(thing[i].observation, data);
-    } 
-    else if (thing[i].organizer) {
-      organizer(thing[i].organizer, data);
-    } 
-    else if (thing[i].procedure) {
-      procedure(thing[i].procedure, data);
-    } 
-    else if (thing[i].substanceAdministration) {
-      substanceAdministration(thing[i].substanceAdministration, data);
-    } 
-    else if (thing[i].supply) {
-      supply(thing[i].supply, data);
-    } 
-  } 
-}
-
-const observation = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].value) {
-    value(thing[0].value, data)
-  }
-  if (thing[0].interpretationCode) {
-    code(thing[0].interpretationCode, data)
-  }
-  if (thing[0].methodCode) {
-    code(thing[0].methodCode, data)
-  }
-  if (thing[0].targetSiteCode) {
-    code(thing[0].targetSiteCode, data)
-  }
-  if (thing[0].referenceRange) {
-    for (let j = 0; j < thing[0].referenceRange.length; j++) {
-      if (thing[0].referenceRange[j].text) {
-
-      }
-      if (thing[0].referenceRange[j].value) {
-        value(thing[0].referenceRange[j].value, data)
-      }
-    }
-  }
-  if (thing[0].participant){
-    participant(thing[0].participant, data)
-  }
-
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const organizer = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].component) {
-    for (let i = 0; i < thing[0].component.length; i++) {
-      if (thing[0].component[i].observation) {
-        observation(thing[0].component[i].observation, data);
-      } 
-    }
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const performer = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing && thing[0] && thing[0].assignedEntity) {
-    thing = thing[0].assignedEntity;
-    if (thing[0].id) {
-      id(thing[0].id, data);
-    }
-    if (thing[0].functionCode) {
-      code(thing[0].functionCode, data);
-    }
-    if (thing[0].code) {
-      code(thing[0].code, data);
-    }
-    if (thing[0].time) {
-      effectiveTime(thing[0].time, data);
-    }
-    if (thing[0].assignedPerson && thing[0].assignedPerson[0]) {
-      if (thing[0].assignedPerson[0].id) {
-        id(thing[0].assignedPerson[0].id, data)
-      }
-      if (thing[0].assignedPerson[0].name) {
-        name(thing[0].assignedPerson[0].name, data)
-      }
-      if (thing[0].assignedPerson[0].addr) {
-        addr(thing[0].assignedPerson[0].addr, data)
-      }
-      if (thing[0].assignedPerson[0].telecom) {
-        telecom(thing[0].assignedPerson[0].telecom, data)
-      }
-    }
-    if (thing[0].representedOrganization && thing[0].representedOrganization[0]) {
-      if (thing[0].representedOrganization[0].id) {
-        id(thing[0].representedOrganization[0].id, data)
-      }
-      if (thing[0].representedOrganization[0].name) {
-        name(thing[0].representedOrganization[0].name, data)
-      }
-      if (thing[0].representedOrganization[0].addr) {
-        addr(thing[0].representedOrganization[0].addr, data)
-      }
-      if (thing[0].representedOrganization[0].telecom) {
-        telecom(thing[0].representedOrganization[0].telecom, data)
-      }
-    }    
-  }
-}
-
-const procedure = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].value) {
-    value(thing[0].value, data)
-  }
-  if (thing[0].approachSiteCode) {
-    code(thing[0].approachSiteCode, data)
-  }
-  if (thing[0].methodCode) {
-    code(thing[0].methodCode, data)
-  }
-  if (thing[0].targetSiteCode) {
-    code(thing[0].targetSiteCode, data)
-  }
-  if (thing[0].participant){
-    participant(thing[0].participant, data)
-  }
-
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const substanceAdministration = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].routeCode) {
-    code(thing[0].value, data)
-  }
-  if (thing[0].approachSiteCode) {
-    code(thing[0].approachSiteCode, data)
-  }
-  if (thing[0].doseQuantity) {
-    value(thing[0].doseQuantity, data)
-  }
-  if (thing[0].rateQuantity) {
-    value(thing[0].rateQuantity, data)
-  }
-  if (thing[0].maxDoseQuantity) {
-    value(thing[0].maxDoseQuantity, data)
-  }
-  if (thing[0].methodCode) {
-    code(thing[0].methodCode, data)
-  }
-  if (thing[0].targetSiteCode) {
-    code(thing[0].targetSiteCode, data)
-  }
-  if (thing[0].participant){
-    participant(thing[0].participant, data)
-  }
-  if (thing[0].consumable){
-    consumable(thing[0].consumable, data)
-  }
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const supply = function (thing, data) {
-  if (!thing?.[0]) return;
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].quantity) {
-    value(thing[0].quantity, data);
-  }
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
   }
 }
 
@@ -605,71 +126,61 @@ const match = function (fhirStuff, data) {
     cda: [],
     fhir: []
   };
-  let prior = {};
   let colorIndex = 10;
   fhirStuff = fhirStuff.replace(/urn:oid:/gm, '');
   for (let i = 0; i < data.length; i++) {
-    if (!prior[data[i]]) {
-      let initialLength = matches.cda.length;
-      if (fhirStuff.includes( '"' + data[i] + '"', 'gm') || fhirStuff.includes("'" + data[i] + "'", 'gm') ) {
-        matches.cda.push({string: data[i], color: colorIndex});
-        matches.fhir.push({string: data[i], color: colorIndex});
-        prior[data[i]] = true;
-      }
-      else if (fhirStuff.includes(data[i] + '"', 'gm') || fhirStuff.includes(data[i] + "'", 'gm') ) {
-        matches.cda.push({string: data[i], color: colorIndex});
-        matches.fhir.push({string: data[i], color: colorIndex});
-        prior[data[i]] = true;
-      }
-      else if (fhirStuff.includes(' ' + data[i] + ' ', 'gm')) {
-        matches.cda.push({string: data[i], color: colorIndex});
-        matches.fhir.push({string: data[i], color: colorIndex});
-        prior[data[i]] = true;
-      }
-      else if (fhirStuff.includes(' ' + data[i] + ',', 'gm')) {
-        matches.cda.push({string: data[i], color: colorIndex});
-        matches.fhir.push({string: data[i], color: colorIndex, number: true});
-        prior[data[i]] = true;
-      }
-      else if (translation[data[i]]) {
-        let pieces = translation[data[i]].split('|')
-        for (let j = 0; j < pieces.length; j++) {
-          if (fhirStuff.includes(pieces[j])) {
-            matches.cda.push({string: data[i], color: colorIndex});
-            matches.fhir.push({string: pieces[j], color: colorIndex});
-            prior[data[i]] = true;    
-          }
+    let initialLength = matches.cda.length;
+    if (fhirStuff.includes( '"' + data[i] + '"', 'gm') || fhirStuff.includes("'" + data[i] + "'", 'gm') ) {
+      matches.cda.push({string: data[i], color: colorIndex});
+      matches.fhir.push({string: data[i], color: colorIndex});
+    }
+    else if (fhirStuff.includes(data[i] + '"', 'gm') || fhirStuff.includes(data[i] + "'", 'gm') ) {
+      matches.cda.push({string: data[i], color: colorIndex});
+      matches.fhir.push({string: data[i], color: colorIndex});
+    }
+    else if (fhirStuff.includes(' ' + data[i] + ' ', 'gm')) {
+      matches.cda.push({string: data[i], color: colorIndex});
+      matches.fhir.push({string: data[i], color: colorIndex});
+    }
+    else if (fhirStuff.includes(' ' + data[i] + ',', 'gm')) {
+      matches.cda.push({string: data[i], color: colorIndex});
+      matches.fhir.push({string: data[i], color: colorIndex, number: true});
+    }
+    else if (translation[data[i]]) {
+      let pieces = translation[data[i]].split('|')
+      for (let j = 0; j < pieces.length; j++) {
+        if (fhirStuff.includes(pieces[j])) {
+          matches.cda.push({string: data[i], color: colorIndex});
+          matches.fhir.push({string: pieces[j], color: colorIndex});
         }
       }
-      else if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
-        if (data[i].length < 9) {
-          let re = data[i];
-          if (data[i].length === 8) re = data[i].slice(0,4) + '-' + data[i].slice(4,6) + '-' + data[i].slice(6,8);   
-          else if (data[i].length === 6) re = data[i].slice(0,4) + '-' + data[i].slice(4,6);
-          let results = fhirStuff.match(re);
+    }
+    else if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
+      if (data[i].length < 9) {
+        let re = data[i];
+        if (data[i].length === 8) re = data[i].slice(0,4) + '-' + data[i].slice(4,6) + '-' + data[i].slice(6,8);   
+        else if (data[i].length === 6) re = data[i].slice(0,4) + '-' + data[i].slice(4,6);
+        let results = fhirStuff.match(re);
+        if (results && results.length) {
+          matches.cda.push({string: data[i], color: colorIndex});
+          matches.fhir.push({string: results[0], color: colorIndex});
+        }
+      }
+      else {
+        let iso = dateTranslate(data[i]);
+        if (iso) {
+          let start = iso.slice(0,11);
+          let end = iso.slice(13,16);
+          let re = new RegExp(start + '..' + end, 'gm');
+          let results = fhirStuff.match(re)
           if (results && results.length) {
             matches.cda.push({string: data[i], color: colorIndex});
             matches.fhir.push({string: results[0], color: colorIndex});
-            prior[data[i]] = true; 
           }
-        }
-        else {
-          let iso = dateTranslate(data[i]);
-          if (iso) {
-            let start = iso.slice(0,11);
-            let end = iso.slice(13,16);
-            let re = new RegExp(start + '..' + end, 'gm');
-            let results = fhirStuff.match(re)
-            if (results && results.length) {
-              matches.cda.push({string: data[i], color: colorIndex});
-              matches.fhir.push({string: results[0], color: colorIndex});
-              prior[data[i]] = true; 
-            }
-          }  
-        }
+        }  
       }
-      if (matches.cda.length !== initialLength) colorIndex++;  
     }
+    if (matches.cda.length !== initialLength) colorIndex++;  
     if (colorIndex === 43) colorIndex = 10;
   }
   console.log(matches);
@@ -680,31 +191,35 @@ const mark = function (cda, fhir, matches) {
   let cdaOutput = escape(cda);
   let fhirOutput = escape(fhir);
   for (let i = 0; i < matches.cda.length; i++) {
-    let stringreplace = matches.cda[i].string;
-    if (stringreplace.length < 4) {
-      stringreplace = `&quot;${stringreplace}&quot;`;
+    let regExp = matches.cda[i].string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (regExp.length < 4) {
+      regExp = `&quot;${regExp}&quot;`;
     }
-    let match = new RegExp(stringreplace, 'g');
+    let match = new RegExp(regExp, 'g');
     if (!cdaOutput.match(match)) {
-      stringreplace = matches.cda[i].string;
-      stringreplace = `&gt;${stringreplace}&lt;`;
-      match = new RegExp(stringreplace, 'g');
+      regExp = `&gt;${matches.cda[i].string}&lt;`;
+      match = new RegExp(regExp, 'g');
     }
     // console.log(match);
     // console.log(cdaOutput.match(match));
-    cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${stringreplace}</mark>`)
+    cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${matches.cda[i].string}</mark>`)
+
+    // Translation
+    if (translation[matches.cda[i].string]) {
+      for (const altName of translation[matches.cda[i].string].split('|')) {
+        const altMatch = new RegExp(altName, 'g');
+        cdaOutput = cdaOutput.replace(altMatch, `<mark class="color${matches.cda[i].color}" >${altName}</mark>`)
+      }
+    }
   }
-  for (let i = 0; i < matches.cda.length; i++) {
-    let stringreplace2 = matches.fhir[i].string;
-    if (stringreplace2.length < 4 && !matches.fhir[i].number) {
-      stringreplace2 = `&quot;${stringreplace2}&quot;`;
+  for (let i = 0; i < matches.fhir.length; i++) {
+    let regExp = matches.fhir[i].string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');;
+    if (regExp.length < 4) {
+      // For numbers, also highlight the comma; otherwise, include the quotes
+      regExp = matches.fhir[i].number ? `${regExp},` : `&quot;${regExp}&quot;`;
     }
-    // how to handle integers, will highlight comma
-    else if (stringreplace2.length < 4) {
-      stringreplace2 = `${stringreplace2},`;
-    }
-    let match = new RegExp(stringreplace2, 'g');
-    fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${stringreplace2}</mark>`)
+    let match = new RegExp(regExp, 'g');
+    fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${matches.fhir[i].string}</mark>`)
   }
   // console.log(cdaOutput);
   // console.log(fhirOutput);
@@ -719,11 +234,6 @@ const mark = function (cda, fhir, matches) {
 const run = function (cdaStuff, fhirStuff) {
   let cda = parser.toJson(cdaStuff, options);
   let fhir = null;
-  const clinicalStatements = ['allergyIntolerance', 'encounter', 'observation', 'procedure', 'substanceAdministration', 'supply', 'organizer'];
-  const supportedEntries = ['recordTarget', 'entry', ...clinicalStatements];
-  if (!supportedEntries.find(entry => !!cda[entry])) {
-    return 'ERROR: Expecting to find one of the following elements: ' + supportedEntries.join(', ');
-  }
   if (typeof(fhirStuff) === 'string') {
     try {
       fhir = JSON.parse(fhirStuff);
@@ -741,57 +251,10 @@ const run = function (cdaStuff, fhirStuff) {
     return 'ERROR: Not a FHIR resource';
   }
   let data = [];
-  
-  if (cda.recordTarget && cda.recordTarget[0] && cda.recordTarget[0].patientRole && cda.recordTarget[0].patientRole[0]) {
-    if (cda.recordTarget[0].patientRole[0].id) {
-      id(cda.recordTarget[0].patientRole[0].id, data);
-    }
-    if (cda.recordTarget[0].patientRole[0].addr) {
-      addr(cda.recordTarget[0].patientRole[0].addr, data);
-    }
-    if (cda.recordTarget[0].patientRole[0].telecom){
-      telecom(cda.recordTarget[0].patientRole[0].telecom, data);
-    }
-    if (cda.recordTarget[0].patientRole[0].patient && cda.recordTarget[0].patientRole[0].patient[0]) {
-      if (cda.recordTarget[0].patientRole[0].patient[0].name) {
-        name(cda.recordTarget[0].patientRole[0].patient[0].name, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].administrativeGenderCode) {
-        code(cda.recordTarget[0].patientRole[0].patient[0].administrativeGenderCode, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].birthTime) {
-        effectiveTime(cda.recordTarget[0].patientRole[0].patient[0].birthTime, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].raceCode) {
-        code(cda.recordTarget[0].patientRole[0].patient[0].raceCode, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].ethnicGroupCode) {
-        code(cda.recordTarget[0].patientRole[0].patient[0].ethnicGroupCode, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].languageCommunication && cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0]) {
-        if(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].languageCode) {
-          code(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].languageCode, data);
-        }
-        if(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].preferenceInd) {
-          value(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].preferenceInd, data);
-        }
-      }
-    }
-  }
-  else {
-    for (const clinicalStatement of clinicalStatements) {
-      if (cda[clinicalStatement]) {
-        eval(`${clinicalStatement}(cda[clinicalStatement], data)`);
-      }
-    }
-    for (let i = 0; i < cda.entry?.length; i++) {
-      for (const clinicalStatement of ['act', 'observation', 'substanceAdministration', 'procedure', 'supply', 'organizer', 'encounter']) {
-        if (cda.entry[i][clinicalStatement]) {
-          eval(`${clinicalStatement}(cda.entry[i][clinicalStatement], data)`);
-        }
-      }
-    }
-  }
+
+  addFields(cda, data);
+  // Remove duplicates
+  data = [...new Set(data)];
 
   // Process XML comments of resolves to
   let r = new RegExp(/<!--[\s\S\n]*?-->/gm);
