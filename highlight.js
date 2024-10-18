@@ -235,7 +235,7 @@ const mark = function (cda, fhir, matches) {
   cdaOutput = cdaOutput
     .replace(/(&lt;\/?)([a-zA-Z0-9:._-]+)(\s|&gt;|$)/g, '$1<span class="field">$2</span>$3')
     .replace(/(&lt;!--[\s\S\n]*?--&gt;)/g, '<span class="comment">$1</span>')
-    .replace(/(\s)([a-zA-Z0-9:._-]+=)(&quot;.*?&quot;)/g, '$1<span class="attrib">$2</span>$3')
+    .replace(/(\s)([a-zA-Z0-9:._-]+=)((?:<mark .*>)?&quot;.*?&quot;(?:<\/mark>)?)/g, '$1<span class="attrib">$2</span>$3')
     .replace(/(&quot;.*?&quot;)/g, '<span class="value">$1</span>');
   
   // Simple JSON highlighting
