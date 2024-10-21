@@ -241,16 +241,17 @@
     // Call loadContent when the page loads
     loadContent();
 
-    function handleTabKey(event, editor) {
+    function handleKeyDown(event, editor) {
       const TAB_SIZE = 2;
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const value = editor.value;
+      const before = value.slice(0, start);
+
       if (event.key === 'Tab') {
         event.preventDefault();
-        const start = editor.selectionStart;
-        const end = editor.selectionEnd;
-        const value = editor.value;
         const tab = ' '.repeat(TAB_SIZE);
 
-        const before = value.slice(0, start);
         const after = value.slice(end);
         const lines = value.slice(start, end).split('\n');
         if (event.shiftKey) {
@@ -268,10 +269,21 @@
         }
         saveContent();
       }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const lineStart = before.lastIndexOf('\n') + 1;
+        const currentLine = before.slice(lineStart);
+        const leadingSpaces = currentLine.match(/^\s*/)[0];
+
+        const after = value.slice(start);
+        editor.value = before + '\n' + leadingSpaces + after;
+        editor.selectionStart = editor.selectionEnd = start + 1 + leadingSpaces.length;
+        saveContent();
+      }
     }
 
-    codeEditor1.addEventListener('keydown', (event) => handleTabKey(event, codeEditor1));
-    codeEditor2.addEventListener('keydown', (event) => handleTabKey(event, codeEditor2));
+    codeEditor1.addEventListener('keydown', (event) => handleKeyDown(event, codeEditor1));
+    codeEditor2.addEventListener('keydown', (event) => handleKeyDown(event, codeEditor2));
 
     codeEditor1.addEventListener('input', () => {
         line_counter1(lineCounter1);
@@ -288,9 +300,10 @@
       $('#code1').val(vkbeautify.xml(c1, 2));
       line_counter1(lineCounter1);
       var c2 = $('#code2').val();
+      if (!JSONParseWithComments(c2)) return;
       $('#code2').val(vkbeautify.json(c2, 2));
       line_counter2(lineCounter2);
-    })
+    });
 
     var clear = $('#clear');
     clear.click(function () {
@@ -367,7 +380,7 @@
       else {
         let check = null;
         try {
-          check = JSON.parse(fhir);
+          check = JSONParseWithComments(fhir, true); // JSON.parse(fhir);
         }
         catch(e){
           alert('ERROR: FHIR is not proper JSON ' + e.message);
@@ -427,6 +440,26 @@
       alert('Could not copy text: ', err);
     });
   });
+
+  function JSONParseWithComments(text, strip = false) {
+    const stripComments = (text) => {
+      return text.replace(/^\s*\/\/.*$/gm, '').replace(/^\s*\/\*[\s\S]*?\*\//gm, '');
+    };
+
+    try {
+      if (/\s*(\/\/|\/\*)/.test(text)) {
+        if (!strip) {
+          alert('JSON contains comments - Beautify without comments first; then add them back in');
+          return;
+        } else {
+          text = stripComments(text);
+        }
+      }
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error('Invalid JSON: ' + e.message);
+    }
+  }
 
 
 </script>

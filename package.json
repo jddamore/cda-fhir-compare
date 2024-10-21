@@ -11,6 +11,7 @@
     "start": "nodemon app.js -e js,html,css"
   },
   "dependencies": {
+    "comment-json": "^4.2.5",
     "escape-html": "^1.0.3",
     "express": "^4.17.1",
     "moment": "^2.29.1",

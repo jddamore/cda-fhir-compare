@@ -5,6 +5,7 @@ const moment = require('moment');
 const { init } = require('express/lib/application');
 const { v4: uuidv4 } = require('uuid');
 const { add } = require('nodemon/lib/rules');
+const { parse, stringify } = require('comment-json');
 
 // let xmlFile = fs.readFileSync('./examples/allergy/example.xml', 'utf-8');
 // let jsonFile = fs.readFileSync('./examples/allergy/example.json', 'utf-8');
@@ -48,6 +49,10 @@ const cdaSynonyms = {
   '46680005' : ['&quot;vital signs&quot;', 'vital-signs'],
 }
 
+const ignoredWords = [
+  'administration'
+];
+
 /*
 These were not mapped above but available in VSAC
 ActMood	http://hl7.org/fhir/v3/ActMood	2.16.840.1.113883.5.1001
@@ -90,6 +95,10 @@ mediaType	http://hl7.org/fhir/v3/MediaType	2.16.840.1.113883.5.79
 
 const addFields = function (thing, data) {
   if (!thing) return;
+  if (typeof thing === 'string') {
+    data.push(thing);
+    return;
+  }
   if (Array.isArray(thing)) {
     for (const item of thing) {
       addFields(item, data);
@@ -98,7 +107,6 @@ const addFields = function (thing, data) {
   }
 
   // Maaaaybe need to ignore some?
-  // There's also logic in the matcher to look for `<string>` so perhaps some field labels themselves should be highlighted?
   for (const field of Object.keys(thing)) {
     if (typeof thing[field] === 'string') {
       data.push(thing[field]);
@@ -139,14 +147,14 @@ const match = function (fhirStuff, data) {
   fhirStuff = fhirStuff.replace(/urn:oid:/gm, '');
   for (let i = 0; i < data.length; i++) {
     let initialLength = matches.cda.length;
-    const isNumeric = !isNaN(data[i]);
+    const number = !isNaN(Number(data[i]));
     // Separate runs - first one to find a match - stop looking
-    for (const [pre, post, number] of [
-      ['"', '"', false],   // Surrounded by quotes
-      ["'", "'", false],   // Surrounded by single quotes
-      [null, '"', false],  // End of a string
-      ['\\s', '\\s', false], // Surrounded by spaces
-      ['\\s', ',', isNumeric]   // End of a string with a comma
+    for (const [pre, post] of [
+      ['"', '"'],   // Surrounded by quotes
+      ["'", "'"],   // Surrounded by single quotes
+      ['\\s', '"'],  // End of a string
+      ['\\s', '\\s'], // Surrounded by spaces
+      ['\\s', ',']   // End of a string with a comma
     ]) {
       const match = fhirStuff.match(stringToRegExp(data[i], pre, post));
       if (match && match[1]) {
@@ -187,7 +195,7 @@ const match = function (fhirStuff, data) {
       for (let j = 0; j < pieces.length; j++) {
         if (stringToRegExp(pieces[j]).test(fhirStuff)) {
           matches.cda.push({string: data[i], color: colorIndex});
-          matches.fhir.push({string: pieces[j], color: colorIndex, isNumeric});
+          matches.fhir.push({string: pieces[j], color: colorIndex, number});
         }
       }
     }
@@ -244,8 +252,12 @@ const mark = function (cda, fhir, matches) {
   for (let i = 0; i < matches.fhir.length; i++) {
     let toWrap = matches.fhir[i].string;
     if (toWrap.length < 4) {
-      // For numbers, also highlight the comma; otherwise, include the quotes
-      toWrap = matches.fhir[i].number ? `${toWrap},` : `&quot;${toWrap}&quot;`;
+      // First try finding instances of number as a number
+      if (matches.fhir[i].number) {
+        fhirOutput = fhirOutput.replace(stringToRegExp(`${toWrap},`), `<mark class="color${matches.fhir[i].color}" >${toWrap},</mark>`);
+      }
+      // But always look for quoted versions, too, and replace them
+      toWrap = `&quot;${toWrap}&quot;`;
     }
     let match = stringToRegExp(toWrap);
     fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${toWrap}</mark>`)
@@ -264,7 +276,8 @@ const mark = function (cda, fhir, matches) {
   // Simple JSON highlighting
   fhirOutput = fhirOutput
     .replace(/(\n\s+&quot;)([a-zA-Z0-9:._-]+)(&quot;)/g, '$1<span class="field">$2</span>$3')
-    // .replace(/(\n\s+)(\/\/.+)/g, '$1<span class="comment">$2</span')  Not allowed by current JSON formatter...
+    .replace(/(\n\s+)(\/\/.+)/g, '$1<span class="comment">$2</span') //  Not allowed by current JSON formatter...
+    .replace(/(\n\s+)(\/\*[\s\S\n]*?\*\/\s*\n?)/mg, '$1<span class="comment">$2</span')
     .replace(/(:\s+&quot;)(.*?)(&quot;)/g, '$1<span class="value">$2</span>$3')
     .replace(/(:\s+)(\d+,)/g, '$1<span class="value">$2</span>');
 
@@ -274,14 +287,44 @@ const mark = function (cda, fhir, matches) {
   return newHtml;
 }
 
-// Main function 
+// My regex extraction alternative that doesn't seem to be working...
+const extractStringsFromXML = function(xmlString) {
+  const doubleQuoteStrings = [];
+  const betweenTagsStrings = [];
 
+  // Extract strings in double quotes
+  const doubleQuoteRegex = /"([^"]*)"/g;
+  let match;
+  while ((match = doubleQuoteRegex.exec(xmlString)) !== null) {
+    doubleQuoteStrings.push(match[1]);
+  }
+
+  // Extract strings between > and <
+  const betweenTagsRegex = />([^<]*)</gm;
+  while ((match = betweenTagsRegex.exec(xmlString)) !== null) {
+    if (match[1].trim()) {
+      betweenTagsStrings.push(match[1].trim());
+    }
+  }
+
+  // Extract strings from comments containing a colon
+  const commentRegex = /<!--[^:>]*:\s*([^>]*)>/g;
+  while ((match = commentRegex.exec(xmlString)) !== null) {
+    if (match[1].trim()) {
+      betweenTagsStrings.push(match[1].trim());
+    }
+  }
+
+  return [...new Set(doubleQuoteStrings), ...new Set(betweenTagsStrings)];
+};
+
+// Main function 
 const run = function (cdaStuff, fhirStuff) {
   let cda = parser.toJson(cdaStuff, options);
   let fhir = null;
   if (typeof(fhirStuff) === 'string') {
     try {
-      fhir = JSON.parse(fhirStuff);
+      fhir = parse(fhirStuff); // JSON.parse(fhirStuff);
     }
     catch (e) {
       console.log(e);
@@ -289,7 +332,7 @@ const run = function (cdaStuff, fhirStuff) {
   }
   else {
     fhir = fhirStuff;
-    fhirStuff = JSON.stringify(fhir);
+    fhirStuff = stringify(fhir); // JSON.stringify(fhir);
   }
   if (!fhir || (!fhir.resource && !fhir.resourceType)) {
     // console.log(fhir);
@@ -299,7 +342,7 @@ const run = function (cdaStuff, fhirStuff) {
 
   addFields(cda, data);
   // Remove duplicates
-  data = [...new Set(data)];
+  data = [...new Set(data.map(item => item.toLowerCase()).filter(item => !ignoredWords.includes(item)))];
 
   // Process XML comments of resolves to
   let r = new RegExp(/<!--[\s\S\n]*?-->/gm);

@@ -14,8 +14,8 @@ mark {
   border-radius: 4px;
 }
 
-.comment {
-  color: #999;
+.comment, .comment span {
+  color: #999 !important;
 }
 .field {
   color: #2f6f9f;
