@@ -36,6 +36,7 @@ const fhirEquivalents = {
   '2.16.840.1.113883.6.4': 'https://www.icd10data.com/icd10pcs|http://www.icd10data.com/icd10pcs',
   '2.16.840.1.113883.3.26.1.1': 'https://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl|http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl',
   '2.16.840.1.113883.5.83': 'https://hl7.org/fhir/v3/ObservationInterpretation|http://hl7.org/fhir/v3/ObservationInterpretation',
+  '419511003': 'medication',
   '46680005': 'vital-signs',
   '2708-6': '59408-5',  // Pulse ox mapping to 2 FHIR codes
 };
@@ -138,22 +139,20 @@ const match = function (fhirStuff, data) {
   fhirStuff = fhirStuff.replace(/urn:oid:/gm, '');
   for (let i = 0; i < data.length; i++) {
     let initialLength = matches.cda.length;
-    const number = !isNaN(data[i]);
+    const isNumeric = !isNaN(data[i]);
     // Separate runs - first one to find a match - stop looking
-    for (const [pre, post] of [
-      ['"', '"'],   // Surrounded by quotes
-      ["'", "'"],   // Surrounded by single quotes
-      [null, '"'],  // End of a string
-      ['\\s', '\\s'], // Surrounded by spaces
-      ['\\s', ',']   // End of a string with a comma
+    for (const [pre, post, number] of [
+      ['"', '"', false],   // Surrounded by quotes
+      ["'", "'", false],   // Surrounded by single quotes
+      [null, '"', false],  // End of a string
+      ['\\s', '\\s', false], // Surrounded by spaces
+      ['\\s', ',', isNumeric]   // End of a string with a comma
     ]) {
       const match = fhirStuff.match(stringToRegExp(data[i], pre, post));
       if (match && match[1]) {
         matches.cda.push({string: data[i], color: colorIndex});
         matches.fhir.push({string: match[1], color: colorIndex, number});
         break
-      } else if (match && !match[1]) {
-        console.log(`RegEx: ${stringToRegExp(data[i], pre, post)} failed to match ${data[i]}`, match);
       }
     }
     if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
@@ -164,7 +163,7 @@ const match = function (fhirStuff, data) {
         let results = fhirStuff.match(re);
         if (results && results.length) {
           matches.cda.push({string: data[i], color: colorIndex});
-          matches.fhir.push({string: results[0], color: colorIndex, number});
+          matches.fhir.push({string: results[0], color: colorIndex});
         }
       }
       else {
@@ -176,7 +175,7 @@ const match = function (fhirStuff, data) {
           let results = fhirStuff.match(re)
           if (results && results.length) {
             matches.cda.push({string: data[i], color: colorIndex});
-            matches.fhir.push({string: results[0], color: colorIndex, number});
+            matches.fhir.push({string: results[0], color: colorIndex});
           }
         }  
       }
@@ -188,7 +187,7 @@ const match = function (fhirStuff, data) {
       for (let j = 0; j < pieces.length; j++) {
         if (stringToRegExp(pieces[j]).test(fhirStuff)) {
           matches.cda.push({string: data[i], color: colorIndex});
-          matches.fhir.push({string: pieces[j], color: colorIndex, number});
+          matches.fhir.push({string: pieces[j], color: colorIndex, isNumeric});
         }
       }
     }
@@ -211,19 +210,20 @@ function stringToRegExp(string, preRegEx, postRegEx) {
   } else {
     flags += 'g';
   }
-  console.log(mainSearch);
   return new RegExp(mainSearch, flags);
 }
 
 const mark = function (cda, fhir, matches) {
   let cdaOutput = escape(cda);
   let fhirOutput = escape(fhir);
+  matches.cda.sort((a, b) => b.string.length - a.string.length);
   for (let i = 0; i < matches.cda.length; i++) {
     let toWrap = matches.cda[i].string
     if (toWrap.length < 4) {
       toWrap = `&quot;${toWrap}&quot;`;
     }
     let match = stringToRegExp(toWrap);
+    // Doesn't match with strings? See if it's between elements, like <value>12</value>
     if (!cdaOutput.match(match)) {
       toWrap = `&gt;${matches.cda[i].string}&lt;`;
       match = stringToRegExp(toWrap);
@@ -240,6 +240,7 @@ const mark = function (cda, fhir, matches) {
       }
     }
   }
+  matches.fhir.sort((a, b) => b.string.length - a.string.length);
   for (let i = 0; i < matches.fhir.length; i++) {
     let toWrap = matches.fhir[i].string;
     if (toWrap.length < 4) {

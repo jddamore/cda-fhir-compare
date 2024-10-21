@@ -391,7 +391,8 @@
           $('#fhir').html($(html).find('#fhir').html());
           // Reapply the click event to all <mark> elements, including newly added ones
           document.querySelectorAll('mark').forEach(function(mark) {
-            mark.addEventListener('click', function() {
+            mark.addEventListener('click', function(event) {
+              event.stopPropagation();
               var text = document.createTextNode(mark.innerText);
               mark.parentNode.replaceChild(text, mark);
             });
