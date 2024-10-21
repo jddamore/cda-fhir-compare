@@ -19,11 +19,11 @@
         overflow-x: scroll;
       }
 
-     .codeArea {
+     .inputCodeArea {
         font-family: 'Courier New', Courier, monospace
       }
      
-     .codeArea, .lineCounter {
+     .inputCodeArea, .lineCounter {
           font-family: lucida console, courier new, courier, monospace;
           margin: 0;
           padding: 10px 0;
@@ -38,7 +38,7 @@
       }
 
       .lineCounter:focus-visible,
-      .codeArea:focus-visible {
+      .inputCodeArea:focus-visible {
         outline:none;
       }
 
@@ -58,7 +58,7 @@
         color:#928869;
       }
 
-      .codeArea {
+      .inputCodeArea {
         padding-left: calc(3.5rem + 5px);
         width:100%;
         /* Determine appearance of code editor */
@@ -118,7 +118,7 @@
             -->
             </div>
             <textarea id="line1" class='lineCounter' readonly rows="100">1.</textarea>
-            <textarea id="code1" class="form-control codeArea" rows="100"></textarea>
+            <textarea id="code1" class="form-control inputCodeArea" rows="100"></textarea>
           </div>
         </div>
       <div class="col-md-6">
@@ -140,8 +140,30 @@
             -->
           </div>
           <textarea id="line2" class='lineCounter' readonly rows="100">1.</textarea>
-          <textarea id="code2" class="form-control codeArea" rows="100"></textarea>
+          <textarea id="code2" class="form-control inputCodeArea" rows="100"></textarea>
       </div>
+      </div>
+    </div>
+
+    <div class="mb-4"></div>
+    <div class="row g-5" id="highlightOutput" style="display:none;">
+      <div class="col-md-6">
+        <div>
+          <div class="d-flex justify-content-between align-items-center">
+            <h2>Highlighted CDA Entry Here</h2>
+            <button id="copyCDA" class="btn btn-secondary btn-sm">Copy CDA HTML to Clipboard</button>
+          </div>
+          <div id="cda" class="border codeArea"></div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div>
+          <div class="d-flex justify-content-between align-items-center">
+            <h2>Highlighted FHIR Resource Here</h2>
+            <button id="copyFHIR" class="btn btn-secondary btn-sm">Copy FHIR HTML to Clipboard</button>
+          </div>
+          <div id="fhir" class="border codeArea"></div>
+        </div>
       </div>
     </div>
   </main>
@@ -198,11 +220,34 @@
       lineCountCache2 = lineCount2;
     }
 
+    // Save the contents of codeEditor1 and codeEditor2 to localStorage
+    function saveContent() {
+      localStorage.setItem('cdaCompareLeft', codeEditor1.value);
+      localStorage.setItem('cdaCompareRight', codeEditor2.value);
+    }
+
+    // Load the contents of codeEditor1 and codeEditor2 from localStorage
+    function loadContent() {
+      if (localStorage.getItem('cdaCompareLeft')) {
+      codeEditor1.value = localStorage.getItem('cdaCompareLeft');
+      line_counter1(lineCounter1);
+      }
+      if (localStorage.getItem('cdaCompareRight')) {
+      codeEditor2.value = localStorage.getItem('cdaCompareRight');
+      line_counter2(lineCounter2);
+      }
+    }
+
+    // Call loadContent when the page loads
+    loadContent();
+
     codeEditor1.addEventListener('input', () => {
         line_counter1(lineCounter1);
+        saveContent();
     });
     codeEditor2.addEventListener('input', () => {
         line_counter2(lineCounter2);
+        saveContent();
     });
 
     var format = $('#formatButton');
@@ -308,8 +353,20 @@
         url: "/data",
         data: data,
         success: function(html) {
-          var newWindow = window.open("", "CDA-FHIR Highlighting Result");
-          newWindow.document.write(html);
+
+          $('#cda').html($(html).find('#cda').html());
+          $('#fhir').html($(html).find('#fhir').html());
+          // Reapply the click event to all <mark> elements, including newly added ones
+          document.querySelectorAll('mark').forEach(function(mark) {
+            mark.addEventListener('click', function() {
+              var text = document.createTextNode(mark.innerText);
+              mark.parentNode.replaceChild(text, mark);
+            });
+          });
+          $('#highlightOutput').show();
+          $('html, body').animate({
+            scrollTop: $("#highlightOutput").offset().top
+          }, 1000);
         },
         error: function(xhr, status) {
             alert('error with server')
@@ -318,6 +375,26 @@
       }
     });
 });
+
+  document.getElementById('copyCDA').addEventListener('click', function() {
+    var cdaContent = document.getElementById('cda').outerHTML;
+    navigator.clipboard.writeText(cdaContent).then(function() {
+      alert('CDA content copied to clipboard');
+    }, function(err) {
+      alert('Could not copy text: ', err);
+    });
+  });
+
+  document.getElementById('copyFHIR').addEventListener('click', function() {
+    var fhirContent = document.getElementById('fhir').outerHTML;
+    navigator.clipboard.writeText(fhirContent).then(function() {
+      alert('FHIR content copied to clipboard');
+    }, function(err) {
+      alert('Could not copy text: ', err);
+    });
+  });
+
+
 </script>
   </body>
 </html>

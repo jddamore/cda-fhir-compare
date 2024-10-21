@@ -42,17 +42,50 @@
       <div class="row">
         <div class="col-md-6">
           <div>
-            <h2>Highlighted CDA Entry Here</h2>
+            <div class="d-flex justify-content-between align-items-center">
+              <h2>Highlighted CDA Entry Here</h2>
+              <button id="copyCDA" class="btn btn-secondary btn-sm">Copy CDA HTML to Clipboard</button>
+            </div>
             <div id="cda" class="border codeArea"></div>
           </div>
         </div>
         <div class="col-md-6">
           <div>
-            <h2>Highlighted FHIR Resource Here</h2>
+            <div class="d-flex justify-content-between align-items-center">
+              <h2>Highlighted FHIR Resource Here</h2>
+              <button id="copyFHIR" class="btn btn-secondary btn-sm">Copy FHIR HTML to Clipboard</button>
+            </div>
             <div id="fhir" class="border codeArea"></div>
           </div>
         </div>
       </div>
+
+      <script>
+        document.getElementById('copyCDA').addEventListener('click', function() {
+          var cdaContent = document.getElementById('cda').outerHTML;
+          navigator.clipboard.writeText(cdaContent).then(function() {
+            alert('CDA content copied to clipboard');
+          }, function(err) {
+            alert('Could not copy text: ', err);
+          });
+        });
+    
+        document.getElementById('copyFHIR').addEventListener('click', function() {
+          var fhirContent = document.getElementById('fhir').outerHTML;
+          navigator.clipboard.writeText(fhirContent).then(function() {
+            alert('FHIR content copied to clipboard');
+          }, function(err) {
+            alert('Could not copy text: ', err);
+          });
+        });
+
+        document.querySelectorAll('mark').forEach(function(mark) {
+          mark.addEventListener('click', function() {
+            var text = document.createTextNode(mark.innerText);
+            mark.parentNode.replaceChild(text, mark);
+          });
+        });
+      </script>
 
     </main>
     <footer class="pt-5 my-5 text-muted border-top">
