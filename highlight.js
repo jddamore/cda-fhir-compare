@@ -21,10 +21,10 @@ let options = {
 };
 
 // Translation of elements (also re-highlights strings on CDA side)
-const translation = {
-  '2.16.840.1.113883.6.96' : 'https://www.snomed.org/|http://www.snomed.org/|https://snomed.info/sct|http://snomed.info/sct|SNOMED CT',
+const fhirEquivalents = {
+  '2.16.840.1.113883.6.96' : 'https://www.snomed.org/|http://www.snomed.org/|https://snomed.info/sct|http://snomed.info/sct',
   '2.16.840.1.113883.6.88' : 'https://www.nlm.nih.gov/research/umls/rxnorm|http://www.nlm.nih.gov/research/umls/rxnorm',
-  '2.16.840.1.113883.6.1' : 'https://loinc.org|http://loinc.org|LOINC',
+  '2.16.840.1.113883.6.1' : 'https://loinc.org|http://loinc.org',
   '2.16.840.1.113883.6.90' : 'http://hl7.org/fhir/sid/icd-10-cm',
   '2.16.840.1.113883.6.69': 'https://hl7.org/fhir/sid/ndc|http://hl7.org/fhir/sid/ndc',
   '2.16.840.1.113883.6.101': 'https://terminology.hl7.org/CodeSystem/v3-nuccProviderCodes|http://terminology.hl7.org/CodeSystem/v3-nuccProviderCodes|https://nucc.org/provider-taxonomy|http://nucc.org/provider-taxonomy',
@@ -36,8 +36,16 @@ const translation = {
   '2.16.840.1.113883.6.4': 'https://www.icd10data.com/icd10pcs|http://www.icd10data.com/icd10pcs',
   '2.16.840.1.113883.3.26.1.1': 'https://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl|http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl',
   '2.16.840.1.113883.5.83': 'https://hl7.org/fhir/v3/ObservationInterpretation|http://hl7.org/fhir/v3/ObservationInterpretation',
-  '46680005': 'vital-signs|&quot;Vital Signs&quot;',
+  '46680005': 'vital-signs',
+  '2708-6': '59408-5',  // Pulse ox mapping to 2 FHIR codes
 };
+
+const cdaSynonyms = {
+  '2.16.840.1.113883.6.96' : ['SNOMED CT', 'SNOMED-CT', 'SNOMED'],
+  '2.16.840.1.113883.6.88' : ['RxNorm'],
+  '2.16.840.1.113883.6.1' : ['LOINC'],
+  '46680005' : ['&quot;vital signs&quot;', 'vital-signs'],
+}
 
 /*
 These were not mapped above but available in VSAC
@@ -131,32 +139,24 @@ const match = function (fhirStuff, data) {
   for (let i = 0; i < data.length; i++) {
     let initialLength = matches.cda.length;
     const number = !isNaN(data[i]);
-    if (fhirStuff.includes( '"' + data[i] + '"', 'gm') || fhirStuff.includes("'" + data[i] + "'", 'gm') ) {
-      matches.cda.push({string: data[i], color: colorIndex});
-      matches.fhir.push({string: data[i], color: colorIndex, number});
-    }
-    else if (fhirStuff.includes(data[i] + '"', 'gm') || fhirStuff.includes(data[i] + "'", 'gm') ) {
-      matches.cda.push({string: data[i], color: colorIndex});
-      matches.fhir.push({string: data[i], color: colorIndex, number});
-    }
-    else if (fhirStuff.includes(' ' + data[i] + ' ', 'gm')) {
-      matches.cda.push({string: data[i], color: colorIndex});
-      matches.fhir.push({string: data[i], color: colorIndex, number});
-    }
-    else if (fhirStuff.includes(' ' + data[i] + ',', 'gm')) {
-      matches.cda.push({string: data[i], color: colorIndex});
-      matches.fhir.push({string: data[i], color: colorIndex, number});
-    }
-    else if (translation[data[i]]) {
-      let pieces = translation[data[i]].split('|')
-      for (let j = 0; j < pieces.length; j++) {
-        if (fhirStuff.includes(pieces[j])) {
-          matches.cda.push({string: data[i], color: colorIndex});
-          matches.fhir.push({string: pieces[j], color: colorIndex, number});
-        }
+    // Separate runs - first one to find a match - stop looking
+    for (const [pre, post] of [
+      ['"', '"'],   // Surrounded by quotes
+      ["'", "'"],   // Surrounded by single quotes
+      [null, '"'],  // End of a string
+      ['\\s', '\\s'], // Surrounded by spaces
+      ['\\s', ',']   // End of a string with a comma
+    ]) {
+      const match = fhirStuff.match(stringToRegExp(data[i], pre, post));
+      if (match && match[1]) {
+        matches.cda.push({string: data[i], color: colorIndex});
+        matches.fhir.push({string: match[1], color: colorIndex, number});
+        break
+      } else if (match && !match[1]) {
+        console.log(`RegEx: ${stringToRegExp(data[i], pre, post)} failed to match ${data[i]}`, match);
       }
     }
-    else if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
+    if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
       if (data[i].length < 9) {
         let re = data[i];
         if (data[i].length === 8) re = data[i].slice(0,4) + '-' + data[i].slice(4,6) + '-' + data[i].slice(6,8);   
@@ -181,6 +181,19 @@ const match = function (fhirStuff, data) {
         }  
       }
     }
+
+    // Always run the translations
+    if (fhirEquivalents[data[i]]) {
+      let pieces = fhirEquivalents[data[i]].split('|')
+      for (let j = 0; j < pieces.length; j++) {
+        if (stringToRegExp(pieces[j]).test(fhirStuff)) {
+          matches.cda.push({string: data[i], color: colorIndex});
+          matches.fhir.push({string: pieces[j], color: colorIndex, number});
+        }
+      }
+    }
+
+
     if (matches.cda.length !== initialLength) colorIndex++;  
     if (colorIndex === 43) colorIndex = 10;
   }
@@ -188,43 +201,52 @@ const match = function (fhirStuff, data) {
   return matches;
 }
 
+function stringToRegExp(string, preRegEx, postRegEx) {
+  let mainSearch = string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let flags = 'im';
+  if (preRegEx || postRegEx) {
+    mainSearch = `(${mainSearch})`;
+    if (preRegEx) mainSearch = `(?:${preRegEx})${mainSearch}`;
+    if (postRegEx) mainSearch = `${mainSearch}(?:${postRegEx})`;
+  } else {
+    flags += 'g';
+  }
+  console.log(mainSearch);
+  return new RegExp(mainSearch, flags);
+}
+
 const mark = function (cda, fhir, matches) {
   let cdaOutput = escape(cda);
   let fhirOutput = escape(fhir);
   for (let i = 0; i < matches.cda.length; i++) {
     let toWrap = matches.cda[i].string
-    let regExp = toWrap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');  // Make string ready for RegExp (fixes things like `[]` in strings)
-    if (regExp.length < 4) {
+    if (toWrap.length < 4) {
       toWrap = `&quot;${toWrap}&quot;`;
-      regExp = `&quot;${regExp}&quot;`;
     }
-    let match = new RegExp(regExp, 'g');
+    let match = stringToRegExp(toWrap);
     if (!cdaOutput.match(match)) {
       toWrap = `&gt;${matches.cda[i].string}&lt;`;
-      regExp = `&gt;${matches.cda[i].string}&lt;`;
-      match = new RegExp(regExp, 'g');
+      match = stringToRegExp(toWrap);
     }
     // console.log(match);
     // console.log(cdaOutput.match(match));
     cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${toWrap}</mark>`)
 
     // Translation
-    if (translation[matches.cda[i].string]) {
-      for (const altName of translation[matches.cda[i].string].split('|')) {
-        const altMatch = new RegExp(altName, 'g');
+    if (cdaSynonyms[matches.cda[i].string]) {
+      for (const altName of cdaSynonyms[matches.cda[i].string]) {
+        const altMatch = new RegExp(altName, 'gi');
         cdaOutput = cdaOutput.replace(altMatch, `<mark class="color${matches.cda[i].color}" >${altName}</mark>`)
       }
     }
   }
   for (let i = 0; i < matches.fhir.length; i++) {
     let toWrap = matches.fhir[i].string;
-    let regExp = toWrap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');;
-    if (regExp.length < 4) {
+    if (toWrap.length < 4) {
       // For numbers, also highlight the comma; otherwise, include the quotes
       toWrap = matches.fhir[i].number ? `${toWrap},` : `&quot;${toWrap}&quot;`;
-      regExp = matches.fhir[i].number ? `${regExp},` : `&quot;${regExp}&quot;`;
     }
-    let match = new RegExp(regExp, 'g');
+    let match = stringToRegExp(toWrap);
     fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${toWrap}</mark>`)
   }
   // console.log(cdaOutput);
