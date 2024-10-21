@@ -241,6 +241,38 @@
     // Call loadContent when the page loads
     loadContent();
 
+    function handleTabKey(event, editor) {
+      const TAB_SIZE = 2;
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        const value = editor.value;
+        const tab = ' '.repeat(TAB_SIZE);
+
+        const before = value.slice(0, start);
+        const after = value.slice(end);
+        const lines = value.slice(start, end).split('\n');
+        if (event.shiftKey) {
+          // Shift + Tab: Remove indentation
+          const newLines = lines.map(line => line.startsWith(tab) ? line.slice(TAB_SIZE) : line);
+          editor.value = before + newLines.join('\n') + after;
+          editor.selectionStart = start - TAB_SIZE;
+          editor.selectionEnd = end - TAB_SIZE * lines.length;
+        } else {
+          // Tab: Add indentation
+          const newLines = lines.map(line => tab + line);
+          editor.value = before + newLines.join('\n') + after;
+          editor.selectionStart = start + TAB_SIZE;
+          editor.selectionEnd = end + TAB_SIZE * lines.length;
+        }
+        saveContent();
+      }
+    }
+
+    codeEditor1.addEventListener('keydown', (event) => handleTabKey(event, codeEditor1));
+    codeEditor2.addEventListener('keydown', (event) => handleTabKey(event, codeEditor2));
+
     codeEditor1.addEventListener('input', () => {
         line_counter1(lineCounter1);
         saveContent();
