@@ -37,8 +37,13 @@ const fhirEquivalents = {
   '2.16.840.1.113883.6.4': 'https://www.icd10data.com/icd10pcs|http://www.icd10data.com/icd10pcs',
   '2.16.840.1.113883.3.26.1.1': 'https://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl|http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl',
   '2.16.840.1.113883.5.83': 'https://hl7.org/fhir/v3/ObservationInterpretation|http://hl7.org/fhir/v3/ObservationInterpretation',
+  '2.16.840.1.113883.5.8': 'http://terminology.hl7.org/CodeSystem/v3-ActReason',
+
   '419511003': 'medication',
   '46680005': 'vital-signs',
+  'f': 'female',  // don't do 'm' since we use that for married
+  'h': 'home',
+  'negationind=&quot;true&quot;': 'not-done',
   '2708-6': '59408-5',  // Pulse ox mapping to 2 FHIR codes
 };
 
@@ -50,7 +55,10 @@ const cdaSynonyms = {
 }
 
 const ignoredWords = [
-  'administration'
+  'administration',
+  'maritalstatus',
+  'or',
+  'unit',
 ];
 
 /*
@@ -96,7 +104,7 @@ mediaType	http://hl7.org/fhir/v3/MediaType	2.16.840.1.113883.5.79
 const addFields = function (thing, data) {
   if (!thing) return;
   if (typeof thing === 'string') {
-    data.push(thing);
+    data.push(tweakString(thing));
     return;
   }
   if (Array.isArray(thing)) {
@@ -109,7 +117,11 @@ const addFields = function (thing, data) {
   // Maaaaybe need to ignore some?
   for (const field of Object.keys(thing)) {
     if (typeof thing[field] === 'string') {
-      data.push(thing[field]);
+      if (field === 'negationInd' && thing[field] === 'true') {
+        data.push('negationInd=&quot;true&quot;');
+      } else {
+        data.push(tweakString(thing[field]));
+      }
     }
     else if (Array.isArray(thing[field])) {
       for (const item of thing[field]) {
@@ -120,6 +132,11 @@ const addFields = function (thing, data) {
       addFields(thing[field], data);
     }
   }
+}
+
+const tweakString = function (string) {
+  if (string.startsWith('tel:')) string = string.slice(4);
+  return string.trim();
 }
 
 // Operations for Mapping
@@ -184,9 +201,10 @@ const match = function (fhirStuff, data) {
     if (fhirEquivalents[data[i]]) {
       let pieces = fhirEquivalents[data[i]].split('|')
       for (let j = 0; j < pieces.length; j++) {
-        if (stringToRegExp(pieces[j]).test(fhirStuff)) {
+        const results = fhirStuff.match(stringToRegExp(pieces[j]));
+        if (results) {
           matches.cda.push({string: data[i], color: colorIndex});
-          matches.fhir.push({string: pieces[j], color: colorIndex, number});
+          matches.fhir.push({string: results[0], color: colorIndex, number});
         }
       }
     }
