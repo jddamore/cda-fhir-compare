@@ -443,11 +443,11 @@
 
   function JSONParseWithComments(text, strip = false) {
     const stripComments = (text) => {
-      return text.replace(/^\s*\/\/.*$/gm, '').replace(/^\s*\/\*[\s\S]*?\*\//gm, '');
+      return text.replace(/^\s+\/\/.*$/gm, '').replace(/^\s*\/\*[\s\S]*?\*\//gm, '');
     };
 
     try {
-      if (/\s*(\/\/|\/\*)/.test(text)) {
+      if (/\s+(\/\/|\/\*)/.test(text)) {
         if (!strip) {
           alert('JSON contains comments - Beautify without comments first; then add them back in');
           return;
