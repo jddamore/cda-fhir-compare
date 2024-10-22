@@ -124,17 +124,11 @@ const addFields = function (thing, data) {
 
 // Operations for Mapping
 const dateTranslate = function (thing) {
-  let output = null
-  try {
-   thing = thing.replace('.000', '');
-   let newTime = moment(thing, 'YYYYMMDDHHmmssZ');
-   output = newTime.toISOString();
-  }
-  catch (e) {
-    console.log(e);
-  }
-  finally {
-    return output;
+  const dateParts = thing.match(/^(\d{4})(\d{2})(\d{2})(\d{2})?(\d{2})?(\d{2})?([+-]\d{2})?(\d{2})?/);
+  if (dateParts) {
+    const [_, year, month, day, hour = '00', minute = '00', second = '00', offsetH = '', offsetM = ''] = dateParts;
+    const offset = offsetH ? `${offsetH}:${offsetM}` : '';
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`;
   }
 }
 
@@ -144,7 +138,7 @@ const match = function (fhirStuff, data) {
     fhir: []
   };
   let colorIndex = 10;
-  fhirStuff = fhirStuff.replace(/urn:oid:/gm, '');
+  fhirStuff = fhirStuff.replace(/urn:(oid|uuid):/gm, '');
   for (let i = 0; i < data.length; i++) {
     let initialLength = matches.cda.length;
     const number = !isNaN(Number(data[i]));
@@ -177,10 +171,7 @@ const match = function (fhirStuff, data) {
       else {
         let iso = dateTranslate(data[i]);
         if (iso) {
-          let start = iso.slice(0,11);
-          let end = iso.slice(13,16);
-          let re = new RegExp(start + '..' + end, 'gm');
-          let results = fhirStuff.match(re)
+          let results = fhirStuff.match(iso)
           if (results && results.length) {
             matches.cda.push({string: data[i], color: colorIndex});
             matches.fhir.push({string: results[0], color: colorIndex});
@@ -236,6 +227,7 @@ const mark = function (cda, fhir, matches) {
       toWrap = `&gt;${matches.cda[i].string}&lt;`;
       match = stringToRegExp(toWrap);
     }
+    // TODO - match strings in commas that are after colons...
     // console.log(match);
     // console.log(cdaOutput.match(match));
     cdaOutput = cdaOutput.replace(match, (matched) => `<mark class="color${matches.cda[i].color}" >${matched}</mark>`);
@@ -254,7 +246,7 @@ const mark = function (cda, fhir, matches) {
     if (toWrap.length < 4) {
       // First try finding instances of number as a number
       if (matches.fhir[i].number) {
-        fhirOutput = fhirOutput.replace(stringToRegExp(`${toWrap},`), `<mark class="color${matches.fhir[i].color}" >${toWrap},</mark>`);
+        fhirOutput = fhirOutput.replace(stringToRegExp(toWrap, null, ',|\\n'), (matched) => `<mark class="color${matches.fhir[i].color}" >${matched}</mark>`);
       }
       // But always look for quoted versions, too, and replace them
       toWrap = `&quot;${toWrap}&quot;`;
@@ -276,8 +268,8 @@ const mark = function (cda, fhir, matches) {
   // Simple JSON highlighting
   fhirOutput = fhirOutput
     .replace(/(\n\s+&quot;)([a-zA-Z0-9:._-]+)(&quot;)/g, '$1<span class="field">$2</span>$3')
-    .replace(/(\n\s+)(\/\/.+)/g, '$1<span class="comment">$2</span>') //  Not allowed by current JSON formatter...
-    .replace(/(\n\s+)(\/\*[\s\S\n]*?\*\/\s*\n?)/mg, '$1<span class="comment">$2</span')
+    .replace(/(\n\s+)(\/\/.+)/g, '$1<span class="comment">$2</span>')
+    .replace(/(\n\s+)(\/\*[\s\S\n]*?\*\/\s*\n?)/mg, '$1<span class="comment">$2</span>')
     .replace(/(:\s+&quot;)(.*?)(&quot;)/g, '$1<span class="value">$2</span>$3')
     .replace(/(:\s+)(\d+,)/g, '$1<span class="value">$2</span>');
 
