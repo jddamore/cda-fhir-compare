@@ -243,9 +243,9 @@
 
     function handleKeyDown(event, editor) {
       const TAB_SIZE = 2;
-      const start = editor.selectionStart;
-      const end = editor.selectionEnd;
       const value = editor.value;
+      const start = value.lastIndexOf('\n', editor.selectionStart - 1) + 1; // editor.selectionStart;
+      const end = editor.selectionEnd;
       const before = value.slice(0, start);
 
       if (event.key === 'Tab') {
@@ -258,13 +258,13 @@
           // Shift + Tab: Remove indentation
           const newLines = lines.map(line => line.startsWith(tab) ? line.slice(TAB_SIZE) : line);
           editor.value = before + newLines.join('\n') + after;
-          editor.selectionStart = start - TAB_SIZE;
+          editor.selectionStart = start;
           editor.selectionEnd = end - TAB_SIZE * lines.length;
         } else {
           // Tab: Add indentation
           const newLines = lines.map(line => tab + line);
           editor.value = before + newLines.join('\n') + after;
-          editor.selectionStart = start + TAB_SIZE;
+          editor.selectionStart = start;
           editor.selectionEnd = end + TAB_SIZE * lines.length;
         }
         saveContent();
