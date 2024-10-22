@@ -238,7 +238,7 @@ const mark = function (cda, fhir, matches) {
     }
     // console.log(match);
     // console.log(cdaOutput.match(match));
-    cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${toWrap}</mark>`)
+    cdaOutput = cdaOutput.replace(match, (matched) => `<mark class="color${matches.cda[i].color}" >${matched}</mark>`);
 
     // Translation
     if (cdaSynonyms[matches.cda[i].string]) {
@@ -276,7 +276,7 @@ const mark = function (cda, fhir, matches) {
   // Simple JSON highlighting
   fhirOutput = fhirOutput
     .replace(/(\n\s+&quot;)([a-zA-Z0-9:._-]+)(&quot;)/g, '$1<span class="field">$2</span>$3')
-    .replace(/(\n\s+)(\/\/.+)/g, '$1<span class="comment">$2</span') //  Not allowed by current JSON formatter...
+    .replace(/(\n\s+)(\/\/.+)/g, '$1<span class="comment">$2</span>') //  Not allowed by current JSON formatter...
     .replace(/(\n\s+)(\/\*[\s\S\n]*?\*\/\s*\n?)/mg, '$1<span class="comment">$2</span')
     .replace(/(:\s+&quot;)(.*?)(&quot;)/g, '$1<span class="value">$2</span>$3')
     .replace(/(:\s+)(\d+,)/g, '$1<span class="value">$2</span>');
