@@ -227,9 +227,11 @@ const mark = function (cda, fhir, matches) {
       toWrap = `&gt;${matches.cda[i].string}&lt;`;
       match = stringToRegExp(toWrap);
     }
-    // TODO - match strings in commas that are after colons...
-    // console.log(match);
-    // console.log(cdaOutput.match(match));
+    // Doesn't match with either of those? Try space-separated
+    if (!cdaOutput.match(match)) {
+      toWrap = ` ${matches.cda[i].string} `;
+      match = stringToRegExp(toWrap);
+    }
     cdaOutput = cdaOutput.replace(match, (matched) => `<mark class="color${matches.cda[i].color}" >${matched}</mark>`);
 
     // Translation
