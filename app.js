@@ -39,8 +39,8 @@ app.get(['/output'], (req, res) => {
   res.send(output);
 });
 
-app.post('/data', (req, res) => {
-  res.send(highlight(req.body.cda, req.body.fhir));
+app.post('/data', async (req, res) => {
+  res.send(await highlight(req.body.cda, req.body.fhir));
 })
 
 /*

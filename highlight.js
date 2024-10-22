@@ -1,4 +1,3 @@
-const parser = require('xml2json');
 var escape = require('escape-html');
 const fs = require('fs');
 const moment = require('moment');
@@ -6,6 +5,7 @@ const { init } = require('express/lib/application');
 const { v4: uuidv4 } = require('uuid');
 const { add } = require('nodemon/lib/rules');
 const { parse, stringify } = require('comment-json');
+const xml2js = require('xml2js');
 
 // let xmlFile = fs.readFileSync('./examples/allergy/example.xml', 'utf-8');
 // let jsonFile = fs.readFileSync('./examples/allergy/example.json', 'utf-8');
@@ -313,8 +313,8 @@ const extractStringsFromXML = function(xmlString) {
 };
 
 // Main function 
-const run = function (cdaStuff, fhirStuff) {
-  let cda = parser.toJson(cdaStuff, options);
+const run = async function (cdaStuff, fhirStuff) {
+  const cda = await new xml2js.Parser().parseStringPromise(cdaStuff);
   let fhir = null;
   if (typeof(fhirStuff) === 'string') {
     try {
