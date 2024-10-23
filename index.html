@@ -100,7 +100,6 @@
 
     <div class="row g-5">
       <div class="col-md-6">
-          <div class="col-md-11">
             <div style="height: 150px">
               <h2>Place CDA Entry Here</h2>
               <p>Document must contain only a single element. If you copy unformatted XML, please use "Format Code" button above before pressing "Submit". This tool does not validate CDA content and invalid CDA may not generate appropriate highlighting</p>
@@ -119,10 +118,8 @@
             </div>
             <textarea id="line1" class='lineCounter' readonly rows="100">1.</textarea>
             <textarea id="code1" class="form-control inputCodeArea" rows="100"></textarea>
-          </div>
         </div>
       <div class="col-md-6">
-        <div class="col-md-11">
           <div style="height: 150px">
             <h2>Place FHIR Resource Here</h2>
             <p>Only a single FHIR resource should be included as JSON. If you copy unformatted JSON, please use "Format Code" button above before pressing "Submit". This tool does not validate FHIR content and only accepts JSON.</p>
@@ -141,7 +138,6 @@
           </div>
           <textarea id="line2" class='lineCounter' readonly rows="100">1.</textarea>
           <textarea id="code2" class="form-control inputCodeArea" rows="100"></textarea>
-      </div>
       </div>
     </div>
 
@@ -447,20 +443,34 @@
     });
 });
 
+  function compareToast(message) {
+    var toast = document.createElement('div');
+
+    toast.className = 'compareToast';
+    toast.innerText = message;
+    document.body.appendChild(toast);
+
+    setTimeout(function() {
+      toast.style.transition = 'opacity 3s';
+      toast.style.opacity = '0';
+      setTimeout(function() {
+        document.body.removeChild(toast);
+      }, 7000);
+    }, 3000);
+  }
+
   document.getElementById('copyCDA').addEventListener('click', function() {
     var cdaContent = document.getElementById('cda').outerHTML;
-    navigator.clipboard.writeText(cdaContent).then(function() {
-      alert('CDA content copied to clipboard');
-    }, function(err) {
+    navigator.clipboard.writeText(cdaContent).then(compareToast('CDA content copied to clipboard!'),
+    function(err) {
       alert('Could not copy text: ', err);
     });
   });
 
   document.getElementById('copyFHIR').addEventListener('click', function() {
     var fhirContent = document.getElementById('fhir').outerHTML;
-    navigator.clipboard.writeText(fhirContent).then(function() {
-      alert('FHIR content copied to clipboard');
-    }, function(err) {
+    navigator.clipboard.writeText(fhirContent).then(compareToast('FHIR content copied to clipboard!'),
+    function(err) {
       alert('Could not copy text: ', err);
     });
   });
