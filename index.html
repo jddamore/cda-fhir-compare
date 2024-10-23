@@ -244,33 +244,35 @@
     function handleKeyDown(event, editor) {
       const TAB_SIZE = 2;
       const value = editor.value;
-      const start = value.lastIndexOf('\n', editor.selectionStart - 1) + 1; // editor.selectionStart;
       const end = editor.selectionEnd;
-      const before = value.slice(0, start);
+      const nothingSelected = editor.selectionStart === editor.selectionEnd;
 
       if (event.key === 'Tab') {
         event.preventDefault();
         const tab = ' '.repeat(TAB_SIZE);
-
+        const start = value.lastIndexOf('\n', editor.selectionStart - 1) + 1;
+        const before = value.slice(0, start);
         const after = value.slice(end);
         const lines = value.slice(start, end).split('\n');
         if (event.shiftKey) {
           // Shift + Tab: Remove indentation
           const newLines = lines.map(line => line.startsWith(tab) ? line.slice(TAB_SIZE) : line);
           editor.value = before + newLines.join('\n') + after;
-          editor.selectionStart = start;
           editor.selectionEnd = end - TAB_SIZE * lines.length;
+          editor.selectionStart = nothingSelected ? editor.selectionEnd : start;
         } else {
           // Tab: Add indentation
           const newLines = lines.map(line => tab + line);
           editor.value = before + newLines.join('\n') + after;
-          editor.selectionStart = start;
           editor.selectionEnd = end + TAB_SIZE * lines.length;
+          editor.selectionStart = nothingSelected ? editor.selectionEnd : start;
         }
         saveContent();
       }
       if (event.key === 'Enter') {
         event.preventDefault();
+        const start = editor.selectionStart;
+        const before = value.slice(0, start);
         const lineStart = before.lastIndexOf('\n') + 1;
         const currentLine = before.slice(lineStart);
         const leadingSpaces = currentLine.match(/^\s*/)[0];
@@ -279,6 +281,28 @@
         editor.value = before + '\n' + leadingSpaces + after;
         editor.selectionStart = editor.selectionEnd = start + 1 + leadingSpaces.length;
         saveContent();
+      }
+
+      // Macs are stupid
+      if (event.key === 'Home') {
+        event.preventDefault();
+        const start = editor.selectionStart;
+        const lineStart = editor.value.lastIndexOf('\n', start - 1) + 1;
+        const firstNonWhitespace = editor.value.slice(lineStart).search(/\S|$/) + lineStart;
+
+        if (start === firstNonWhitespace) {
+          editor.selectionStart = editor.selectionEnd = lineStart;
+        } else {
+          editor.selectionStart = editor.selectionEnd = firstNonWhitespace;
+        }
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault();
+        editor.selectionStart = editor.selectionEnd = editor.value.indexOf('\n', editor.selectionStart);
+        if (editor.selectionStart === -1) {
+          editor.selectionStart = editor.selectionEnd = editor.value.length;
+        }
       }
     }
 
