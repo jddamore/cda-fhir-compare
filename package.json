@@ -11,13 +11,14 @@
     "start": "nodemon app.js -e js,html,css"
   },
   "dependencies": {
+    "comment-json": "^4.2.5",
     "escape-html": "^1.0.3",
     "express": "^4.17.1",
     "moment": "^2.29.1",
     "nodemon": "^2.0.15",
     "strip-json-comments": "^5.0.0",
     "uuid": "^8.3.2",
-    "xml2json": "^0.12.0"
+    "xml2js": "^0.6.2"
   },
   "repository": {
     "type": "git",

@@ -39,8 +39,8 @@ app.get(['/output'], (req, res) => {
   res.send(output);
 });
 
-app.post('/data', (req, res) => {
-  res.send(highlight(req.body.cda, req.body.fhir));
+app.post('/data', async (req, res) => {
+  res.send(await highlight(req.body.cda, req.body.fhir));
 })
 
 /*
@@ -55,8 +55,9 @@ if (credentials) {
   httpsServer = https.createServer(credentials, app);
 }
 
-httpServer.listen(80);
+httpServer.listen(8081);
+console.log('HTTP server running on port 8081...');
 if (httpsServer) {
-  httpsServer.listen(443);
+  httpsServer.listen(8082);
+  console.log('HTTPS server running on port 443...');
 }
-else console.log('HTTPS server not running...')

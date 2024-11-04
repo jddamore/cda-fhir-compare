@@ -19,11 +19,11 @@
         overflow-x: scroll;
       }
 
-     .codeArea {
+     .inputCodeArea {
         font-family: 'Courier New', Courier, monospace
       }
      
-     .codeArea, .lineCounter {
+     .inputCodeArea, .lineCounter {
           font-family: lucida console, courier new, courier, monospace;
           margin: 0;
           padding: 10px 0;
@@ -38,7 +38,7 @@
       }
 
       .lineCounter:focus-visible,
-      .codeArea:focus-visible {
+      .inputCodeArea:focus-visible {
         outline:none;
       }
 
@@ -58,7 +58,7 @@
         color:#928869;
       }
 
-      .codeArea {
+      .inputCodeArea {
         padding-left: calc(3.5rem + 5px);
         width:100%;
         /* Determine appearance of code editor */
@@ -100,10 +100,9 @@
 
     <div class="row g-5">
       <div class="col-md-6">
-          <div class="col-md-11">
             <div style="height: 150px">
               <h2>Place CDA Entry Here</h2>
-              <p>CDA must begin with &lt;entry&gt; or &lt;recordTarget&gt; tag and include only a single entry or patient. If you copy unformatted XML, please use "Format Code" button above before pressing "Submit". This tool does not validate CDA content and invalid CDA may not generate appropriate highlighting</p>
+              <p>Document must contain only a single element. If you copy unformatted XML, please use "Format Code" button above before pressing "Submit". This tool does not validate CDA content and invalid CDA may not generate appropriate highlighting</p>
               <!--
               <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
@@ -118,14 +117,12 @@
             -->
             </div>
             <textarea id="line1" class='lineCounter' readonly rows="100">1.</textarea>
-            <textarea id="code1" class="form-control codeArea" rows="100"></textarea>
-          </div>
+            <textarea id="code1" class="form-control inputCodeArea" rows="100"></textarea>
         </div>
       <div class="col-md-6">
-        <div class="col-md-11">
           <div style="height: 150px">
             <h2>Place FHIR Resource Here</h2>
-            <p>Only a single FHIR resource should be included as JSON. The base property should look like { "resource": {THE ACTUAL CONTENT HERE} }. If you copy unformatted JSON, please use "Format Code" button above before pressing "Submit". This tool does not validate FHIR content and only accepts JSON</p>
+            <p>Only a single FHIR resource should be included as JSON. If you copy unformatted JSON, please use "Format Code" button above before pressing "Submit". This tool does not validate FHIR content and only accepts JSON.</p>
             <!--
             <div class="dropdown">
               <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton2" data-bs-toggle="dropdown" aria-expanded="false">
@@ -140,8 +137,29 @@
             -->
           </div>
           <textarea id="line2" class='lineCounter' readonly rows="100">1.</textarea>
-          <textarea id="code2" class="form-control codeArea" rows="100"></textarea>
+          <textarea id="code2" class="form-control inputCodeArea" rows="100"></textarea>
       </div>
+    </div>
+
+    <div class="mb-4"></div>
+    <div class="row g-5" id="highlightOutput" style="display:none;">
+      <div class="col-md-6">
+        <div>
+          <div class="d-flex justify-content-between align-items-center">
+            <h2>Highlighted CDA Entry Here</h2>
+            <button id="copyCDA" class="btn btn-secondary btn-sm">Copy CDA HTML to Clipboard</button>
+          </div>
+          <div id="cda" class="border codeArea"></div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div>
+          <div class="d-flex justify-content-between align-items-center">
+            <h2>Highlighted FHIR Resource Here</h2>
+            <button id="copyFHIR" class="btn btn-secondary btn-sm">Copy FHIR HTML to Clipboard</button>
+          </div>
+          <div id="fhir" class="border codeArea"></div>
+        </div>
       </div>
     </div>
   </main>
@@ -198,11 +216,102 @@
       lineCountCache2 = lineCount2;
     }
 
+    // Save the contents of codeEditor1 and codeEditor2 to localStorage
+    function saveContent() {
+      localStorage.setItem('cdaCompareLeft', codeEditor1.value);
+      localStorage.setItem('cdaCompareRight', codeEditor2.value);
+    }
+
+    // Load the contents of codeEditor1 and codeEditor2 from localStorage
+    function loadContent() {
+      if (localStorage.getItem('cdaCompareLeft')) {
+      codeEditor1.value = localStorage.getItem('cdaCompareLeft');
+      line_counter1(lineCounter1);
+      }
+      if (localStorage.getItem('cdaCompareRight')) {
+      codeEditor2.value = localStorage.getItem('cdaCompareRight');
+      line_counter2(lineCounter2);
+      }
+    }
+
+    // Call loadContent when the page loads
+    loadContent();
+
+    function handleKeyDown(event, editor) {
+      const TAB_SIZE = 2;
+      const value = editor.value;
+      const end = editor.selectionEnd;
+      const nothingSelected = editor.selectionStart === editor.selectionEnd;
+
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        const tab = ' '.repeat(TAB_SIZE);
+        const start = value.lastIndexOf('\n', editor.selectionStart - 1) + 1;
+        const before = value.slice(0, start);
+        const after = value.slice(end);
+        const lines = value.slice(start, end).split('\n');
+        if (event.shiftKey) {
+          // Shift + Tab: Remove indentation
+          const newLines = lines.map(line => line.startsWith(tab) ? line.slice(TAB_SIZE) : line);
+          editor.value = before + newLines.join('\n') + after;
+          editor.selectionEnd = end - TAB_SIZE * lines.length;
+          editor.selectionStart = nothingSelected ? editor.selectionEnd : start;
+        } else {
+          // Tab: Add indentation
+          const newLines = lines.map(line => tab + line);
+          editor.value = before + newLines.join('\n') + after;
+          editor.selectionEnd = end + TAB_SIZE * lines.length;
+          editor.selectionStart = nothingSelected ? editor.selectionEnd : start;
+        }
+        saveContent();
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const start = editor.selectionStart;
+        const before = value.slice(0, start);
+        const lineStart = before.lastIndexOf('\n') + 1;
+        const currentLine = before.slice(lineStart);
+        const leadingSpaces = currentLine.match(/^\s*/)[0];
+
+        const after = value.slice(start);
+        editor.value = before + '\n' + leadingSpaces + after;
+        editor.selectionStart = editor.selectionEnd = start + 1 + leadingSpaces.length;
+        saveContent();
+      }
+
+      // Macs are stupid
+      if (event.key === 'Home') {
+        event.preventDefault();
+        const start = editor.selectionStart;
+        const lineStart = editor.value.lastIndexOf('\n', start - 1) + 1;
+        const firstNonWhitespace = editor.value.slice(lineStart).search(/\S|$/) + lineStart;
+
+        if (start === firstNonWhitespace) {
+          editor.selectionStart = editor.selectionEnd = lineStart;
+        } else {
+          editor.selectionStart = editor.selectionEnd = firstNonWhitespace;
+        }
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault();
+        editor.selectionStart = editor.selectionEnd = editor.value.indexOf('\n', editor.selectionStart);
+        if (editor.selectionStart === -1) {
+          editor.selectionStart = editor.selectionEnd = editor.value.length;
+        }
+      }
+    }
+
+    codeEditor1.addEventListener('keydown', (event) => handleKeyDown(event, codeEditor1));
+    codeEditor2.addEventListener('keydown', (event) => handleKeyDown(event, codeEditor2));
+
     codeEditor1.addEventListener('input', () => {
         line_counter1(lineCounter1);
+        saveContent();
     });
     codeEditor2.addEventListener('input', () => {
         line_counter2(lineCounter2);
+        saveContent();
     });
 
     var format = $('#formatButton');
@@ -211,9 +320,10 @@
       $('#code1').val(vkbeautify.xml(c1, 2));
       line_counter1(lineCounter1);
       var c2 = $('#code2').val();
+      if (!JSONParseWithComments(c2)) return;
       $('#code2').val(vkbeautify.json(c2, 2));
       line_counter2(lineCounter2);
-    })
+    });
 
     var clear = $('#clear');
     clear.click(function () {
@@ -221,6 +331,7 @@
       $('#code2').val(' ');
       line_counter1(lineCounter1);
       line_counter2(lineCounter2);
+      saveContent();
     })
 
     $('#allergyButton').click(function () {
@@ -283,23 +394,21 @@
       if(!cda) {
         alert('ERROR: No CDA content included')
       } 
-      else if (cda.slice(0,6) !== '<entry' && cda.slice(0,6) !== '<recor') {
-        alert('ERROR: CDA not formatted properly');
-      }
       else if (!fhir){
         alert('ERROR: No FHIR content included');
       }
       else {
-        var check = null
+        let check = null;
         try {
-          check = JSON.parse(fhir);
+          check = JSONParseWithComments(fhir, true); // JSON.parse(fhir);
         }
         catch(e){
-          check = null;
-          alert('ERROR: FHIR is not proper JSON');
+          alert('ERROR: FHIR is not proper JSON ' + e.message);
+          return;
         }
-        if (check && !check.resource) {
-          alert('ERROR: FHIR not formatted properly');
+        if (check && !check.resource && !check.resourceType) {
+          alert('ERROR: FHIR not formatted properly (missing a resource or resourceType property)');
+          return;
         }
         let data = {
           cda: cda,
@@ -310,8 +419,21 @@
         url: "/data",
         data: data,
         success: function(html) {
-          var newWindow = window.open("", "CDA-FHIR Highlighting Result");
-          newWindow.document.write(html);
+
+          $('#cda').html($(html).find('#cda').html());
+          $('#fhir').html($(html).find('#fhir').html());
+          // Reapply the click event to all <mark> elements, including newly added ones
+          document.querySelectorAll('mark').forEach(function(mark) {
+            mark.addEventListener('click', function(event) {
+              event.stopPropagation();
+              var text = document.createTextNode(mark.innerText);
+              mark.parentNode.replaceChild(text, mark);
+            });
+          });
+          $('#highlightOutput').show();
+          $('html, body').animate({
+            scrollTop: $("#highlightOutput").offset().top
+          }, 1000);
         },
         error: function(xhr, status) {
             alert('error with server')
@@ -320,6 +442,60 @@
       }
     });
 });
+
+  function compareToast(message) {
+    var toast = document.createElement('div');
+
+    toast.className = 'compareToast';
+    toast.innerText = message;
+    document.body.appendChild(toast);
+
+    setTimeout(function() {
+      toast.style.transition = 'opacity 3s';
+      toast.style.opacity = '0';
+      setTimeout(function() {
+        document.body.removeChild(toast);
+      }, 7000);
+    }, 3000);
+  }
+
+  document.getElementById('copyCDA').addEventListener('click', function() {
+    var cdaContent = document.getElementById('cda').outerHTML;
+    navigator.clipboard.writeText(cdaContent).then(compareToast('CDA content copied to clipboard!'),
+    function(err) {
+      alert('Could not copy text: ', err);
+    });
+  });
+
+  document.getElementById('copyFHIR').addEventListener('click', function() {
+    var fhirContent = document.getElementById('fhir').outerHTML;
+    navigator.clipboard.writeText(fhirContent).then(compareToast('FHIR content copied to clipboard!'),
+    function(err) {
+      alert('Could not copy text: ', err);
+    });
+  });
+
+  function JSONParseWithComments(text, strip = false) {
+    const stripComments = (text) => {
+      return text.replace(/^\s+\/\/.*$/gm, '').replace(/^\s*\/\*[\s\S]*?\*\//gm, '');
+    };
+
+    try {
+      if (/\s+(\/\/|\/\*)/.test(text)) {
+        if (!strip) {
+          alert('JSON contains comments - Beautify without comments first; then add them back in');
+          return;
+        } else {
+          text = stripComments(text);
+        }
+      }
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error('Invalid JSON: ' + e.message);
+    }
+  }
+
+
 </script>
   </body>
 </html>

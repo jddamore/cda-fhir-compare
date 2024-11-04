@@ -1,9 +1,11 @@
-const parser = require('xml2json');
 var escape = require('escape-html');
 const fs = require('fs');
 const moment = require('moment');
 const { init } = require('express/lib/application');
 const { v4: uuidv4 } = require('uuid');
+const { add } = require('nodemon/lib/rules');
+const { parse, stringify } = require('comment-json');
+const xml2js = require('xml2js');
 
 // let xmlFile = fs.readFileSync('./examples/allergy/example.xml', 'utf-8');
 // let jsonFile = fs.readFileSync('./examples/allergy/example.json', 'utf-8');
@@ -19,8 +21,8 @@ let options = {
   alternateTextNode: false
 };
 
-// Translation of elements
-const translation = {
+// Translation of elements (also re-highlights strings on CDA side)
+const fhirEquivalents = {
   '2.16.840.1.113883.6.96' : 'https://www.snomed.org/|http://www.snomed.org/|https://snomed.info/sct|http://snomed.info/sct',
   '2.16.840.1.113883.6.88' : 'https://www.nlm.nih.gov/research/umls/rxnorm|http://www.nlm.nih.gov/research/umls/rxnorm',
   '2.16.840.1.113883.6.1' : 'https://loinc.org|http://loinc.org',
@@ -34,8 +36,34 @@ const translation = {
   '2.16.840.1.113883.6.104': 'https://hl7.org/fhir/sid/icd-9-cm|http://hl7.org/fhir/sid/icd-9-cm',
   '2.16.840.1.113883.6.4': 'https://www.icd10data.com/icd10pcs|http://www.icd10data.com/icd10pcs',
   '2.16.840.1.113883.3.26.1.1': 'https://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl|http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl',
-  '2.16.840.1.113883.5.83': 'https://hl7.org/fhir/v3/ObservationInterpretation|http://hl7.org/fhir/v3/ObservationInterpretation'
+  '2.16.840.1.113883.5.83': 'https://hl7.org/fhir/v3/ObservationInterpretation|http://hl7.org/fhir/v3/ObservationInterpretation',
+  '2.16.840.1.113883.5.8': 'http://terminology.hl7.org/CodeSystem/v3-ActReason',
+
+  '419511003': 'medication',
+  '46680005': 'vital-signs',
+  '74728-7': '85353-1', // Vital Sign CDA vs FHIR panel code
+  'f': 'female',  // don't do 'm' since we use that for married
+  'h': 'home',
+  'negationind=&quot;true&quot;': 'not-done',
+  '2708-6': '59408-5',  // Pulse ox mapping to 2 FHIR codes
+  '1.030': '1.03',
 };
+
+const cdaSynonyms = {
+  '2.16.840.1.113883.6.1' : ['LOINC'],
+  '2.16.840.1.113883.6.88' : ['RxNorm'],
+  '2.16.840.1.113883.6.90' : ['ICD-10-CM'],
+  '2.16.840.1.113883.6.96' : ['SNOMED CT', 'SNOMED-CT', 'SNOMED'],
+  '46680005' : ['&quot;vital signs&quot;', 'vital-signs'],
+  'recurrence': ['246455001'],
+}
+
+const ignoredWords = [
+  'administration',
+  'maritalstatus',
+  'or',
+  'unit',
+];
 
 /*
 These were not mapped above but available in VSAC
@@ -77,515 +105,51 @@ UNII	http://fdasis.nlm.nih.gov	2.16.840.1.113883.4.9
 mediaType	http://hl7.org/fhir/v3/MediaType	2.16.840.1.113883.5.79
 */
 
-// LOWER LEVEL CDA FUNTIONS
-
-const addr = function (thing, data) {
-  if (thing[0].use) data.push(thing[0].use);
-  if (thing[0].streetAddressLine && thing[0].streetAddressLine.length) {
-    for (let i = 0; i < thing[0].streetAddressLine.length; i++) {
-      if (thing[0].streetAddressLine[i][0]) data.push(thing[0].streetAddressLine[i][0]);
-    }
+const addFields = function (thing, data) {
+  if (!thing) return;
+  if (typeof thing === 'string') {
+    data.push(tweakString(thing));
+    return;
   }
-  if (thing[0].city && thing[0].city[0]) data.push(thing[0].city[0]);
-  if (thing[0].state && thing[0].state[0]) data.push(thing[0].state[0]);
-  if (thing[0].postalCode && thing[0].postalCode[0]) data.push(thing[0].postalCode[0]);
-  if (thing[0].country && thing[0].country[0]) data.push(thing[0].country[0]);  
-}
-
-const code = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-    if (thing && thing[i]) {
-      if (thing[i].code) data.push(thing[i].code);
-      if (thing[i].codeSystem) data.push(thing[i].codeSystem); 
-      if (thing[i].displayName) data.push(thing[i].displayName); 
-      if (thing[i].originalText) originalText(thing[i].originalText, data);  
-      if (thing[i].translation) code(thing[i].translation, data);
-    }  
-  }
-};
-
-const consumable = function (thing, data) {
-  if (thing[0] && thing[0].manufacturedProduct && thing[0].manufacturedProduct[0] && thing[0].manufacturedProduct[0].manufacturedMaterial && thing[0].manufacturedProduct[0].manufacturedMaterial[0]) {
-    // console.log('In consumable');
-    console.log(thing[0].manufacturedProduct[0].manufacturedMaterial[0])
-    if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].code) {
-      code(thing[0].manufacturedProduct[0].manufacturedMaterial[0].code, data);
+  if (Array.isArray(thing)) {
+    for (const item of thing) {
+      addFields(item, data);
     }
-    if (thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText && thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText[0]) {
-      // console.log('In lotNumber');
-      data.push(thing[0].manufacturedProduct[0].manufacturedMaterial[0].lotNumberText[0]);
+    return;
+  }
+
+  // Maaaaybe need to ignore some?
+  for (const field of Object.keys(thing)) {
+    if (typeof thing[field] === 'string') {
+      if (field === 'negationInd' && thing[field] === 'true') {
+        data.push('negationInd=&quot;true&quot;');
+      } else {
+        data.push(tweakString(thing[field]));
+      }
+    }
+    else if (Array.isArray(thing[field])) {
+      for (const item of thing[field]) {
+        addFields(item, data);
+      }
+    }
+    else if (typeof thing[field] === 'object') {
+      addFields(thing[field], data);
     }
   }
 }
 
-const effectiveTime = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-    if (thing[i].value) {
-      data.push(thing[i].value);
-      if (thing[i].unit) {
-        data.push(thing[i].unit);
-      }
-    }
-    else if (thing[i].period && thing[i].period[0]) {
-      if (thing[i].period[0].value){
-        data.push(thing[i].period[0].value);
-      }
-      if (thing[i].period[0].unit) {
-        data.push(thing[i].period[0].unit);
-      }
-    }
-    else {
-      if (thing[i].low && thing[i].low[0] && thing[i].low[0].value) {
-        data.push(thing[i].low[0].value);
-        if(thing[i].low[0].unit) data.push(thing[i].high[0].unit);
-      }
-      if (thing[i].high && thing[i].high[0] && thing[i].high[0].value) {
-        data.push(thing[i].high[0].value);
-        if(thing[i].high[0].unit) data.push(thing[i].high[0].unit);
-      }
-    }
-  }
-}
-
-const id = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-   if (thing[i].root) data.push(thing[i].root);
-   if (thing[i].extension) data.push(thing[i].extension); 
-  }
-}
-
-const originalText = function (thing, data) {
-  if (thing[0].reference) {
-    if (thing[0].reference[0].value) data.push(thing[0].reference[0].value);
-  }
-  else if (typeof(thing[0]) === 'string' || thing[0] instanceof String) data.push(...thing);
-}
-
-const name = function (thing, data) {
-  if (thing[0].given || thing[0].family) {
-    if (thing[0].given && thing[0].given.length) {
-      for (let i = 0; i < thing[0].given.length; i++) {
-        if (thing[0].given[i]) data.push(thing[0].given[i]);
-      }
-    }
-    if (thing[0].family && thing[0].family[0]) data.push(thing[0].family[0]);
-  }
-  else if (typeof(thing[0]) === 'string' || thing[0] instanceof String) {
-    data.push(thing[0]);
-  }
-}
-
-const participant = function (thing, data) {
-  if (thing[0].participantRole && thing[0].participantRole[0] && thing[0].participantRole[0].playingEntity && thing[0].participantRole[0].playingEntity[0] && thing[0].participantRole[0].playingEntity[0].code) {
-    code(thing[0].participantRole[0].playingEntity[0].code, data);
-  }
-}
-
-const telecom = function (thing, data) {
-  if (thing[0].use) data.push(thing[0].use);
-  if (thing[0].value) data.push(thing[0].value);
-}
-
-const value = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-    if (thing[i].value) data.push(thing[i].value);
-    if (thing[i].unit) data.push(thing[i].unit);
-    if (thing[i].code) data.push(thing[i].code);
-    if (thing[i].codeSystem) data.push(thing[i].codeSystem); 
-    if (thing[i].displayName) data.push(thing[i].displayName); 
-    if (thing[i].originalText) originalText(thing[i].originalText, data);  
-    if (thing[i].translation) code(thing[i].translation, data);
-  }
-}
-
-// HIGHER LEVEL CDA FUNCTIONs
-
-const act = function (thing, data) {
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const author = function (thing, data) {
-  if (thing & thing[0]) {
-    if (thing[0].functionCode) {
-      code(thing[0].functionCode, data);
-    }
-    if (thing[0].code) {
-      code(thing[0].code, data);
-    }
-    if (thing[0].time) {
-      effectiveTime(thing[0].time, data);
-    }
-    if (thing[0].assignedAuthor && thing[0].assignedAuthor[0]) {
-      if (thing[0].assignedAuthor[0].id) {
-        id(thing[0].assignedAuthor[0].id, data);
-      }
-      if (thing[0].assignedAuthor[0].code) {
-        code(thing[0].assignedAuthor[0].code, data);
-      }
-      if (thing[0].assignedAuthor[0].addr) {
-        addr(thing[0].assignedAuthor[0].addr, data);
-      }
-      if (thing[0].assignedAuthor[0].telecom) {
-        telecom(thing[0].assignedAuthor[0].telecom, data);
-      }
-      if (thing[0].assignedAuthor[0].assignedPerson && thing[0].assignedAuthor[0].assignedPerson[0]) {
-        if (thing[0].assignedAuthor[0].assignedPerson[0].id) {
-          id(thing[0].assignedAuthor[0].assignedPerson[0].id, data)
-        }
-        if (thing[0].assignedAuthor[0].assignedPerson[0].name) {
-          name(thing[0].assignedAuthor[0].assignedPerson[0].name, data)
-        }
-        if (thing[0].assignedAuthor[0].assignedPerson[0].addr) {
-          addr(thing[0].assignedAuthor[0].assignedPerson[0].addr, data)
-        }
-        if (thing[0].assignedAuthor[0].assignedPerson[0].telecom) {
-          telecom(thing[0].assignedAuthor[0].assignedPerson[0].telecom, data)
-        }
-      } 
-    }
-  }
-}
-
-const encounter = function (thing, data) {
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const entryRelationship = function (thing, data) {
-  for (let i = 0; i < thing.length; i++) {
-    if (thing[i].act) {
-      act(thing[i].act, data);
-    }
-    else if (thing[i].encounter) {
-      encounter(thing[i].encounter, data);
-    } 
-    else if (thing[i].observation) {
-      observation(thing[i].observation, data);
-    } 
-    else if (thing[i].organizer) {
-      organizer(thing[i].organizer, data);
-    } 
-    else if (thing[i].procedure) {
-      procedure(thing[i].procedure, data);
-    } 
-    else if (thing[i].substanceAdministration) {
-      substanceAdministration(thing[i].substanceAdministration, data);
-    } 
-    else if (thing[i].supply) {
-      supply(thing[i].supply, data);
-    } 
-  } 
-}
-
-const observation = function (thing, data) {
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].value) {
-    value(thing[0].value, data)
-  }
-  if (thing[0].interpretationCode) {
-    code(thing[0].interpretationCode, data)
-  }
-  if (thing[0].methodCode) {
-    code(thing[0].methodCode, data)
-  }
-  if (thing[0].targetSiteCode) {
-    code(thing[0].targetSiteCode, data)
-  }
-  if (thing[0].referenceRange) {
-    for (let j = 0; j < thing[0].referenceRange.length; j++) {
-      if (thing[0].referenceRange[j].text) {
-
-      }
-      if (thing[0].referenceRange[j].value) {
-        value(thing[0].referenceRange[j].value, data)
-      }
-    }
-  }
-  if (thing[0].participant){
-    participant(thing[0].participant, data)
-  }
-
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const organizer = function (thing, data) {
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].component) {
-    for (let i = 0; i < thing[0].component.length; i++) {
-      if (thing[0].component[i].observation) {
-        observation(thing[0].component[i].observation, data);
-      } 
-    }
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const performer = function (thing, data) {
-  if (thing && thing[0] && thing[0].assignedEntity) {
-    thing = thing[0].assignedEntity;
-    if (thing[0].id) {
-      id(thing[0].id, data);
-    }
-    if (thing[0].functionCode) {
-      code(thing[0].functionCode, data);
-    }
-    if (thing[0].code) {
-      code(thing[0].code, data);
-    }
-    if (thing[0].time) {
-      effectiveTime(thing[0].time, data);
-    }
-    if (thing[0].assignedPerson && thing[0].assignedPerson[0]) {
-      if (thing[0].assignedPerson[0].id) {
-        id(thing[0].assignedPerson[0].id, data)
-      }
-      if (thing[0].assignedPerson[0].name) {
-        name(thing[0].assignedPerson[0].name, data)
-      }
-      if (thing[0].assignedPerson[0].addr) {
-        addr(thing[0].assignedPerson[0].addr, data)
-      }
-      if (thing[0].assignedPerson[0].telecom) {
-        telecom(thing[0].assignedPerson[0].telecom, data)
-      }
-    }
-    if (thing[0].representedOrganization && thing[0].representedOrganization[0]) {
-      if (thing[0].representedOrganization[0].id) {
-        id(thing[0].representedOrganization[0].id, data)
-      }
-      if (thing[0].representedOrganization[0].name) {
-        name(thing[0].representedOrganization[0].name, data)
-      }
-      if (thing[0].representedOrganization[0].addr) {
-        addr(thing[0].representedOrganization[0].addr, data)
-      }
-      if (thing[0].representedOrganization[0].telecom) {
-        telecom(thing[0].representedOrganization[0].telecom, data)
-      }
-    }    
-  }
-}
-
-const procedure = function (thing, data) {
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].value) {
-    value(thing[0].value, data)
-  }
-  if (thing[0].approachSiteCode) {
-    code(thing[0].approachSiteCode, data)
-  }
-  if (thing[0].methodCode) {
-    code(thing[0].methodCode, data)
-  }
-  if (thing[0].targetSiteCode) {
-    code(thing[0].targetSiteCode, data)
-  }
-  if (thing[0].participant){
-    participant(thing[0].participant, data)
-  }
-
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const substanceAdministration = function (thing, data) {
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].routeCode) {
-    code(thing[0].value, data)
-  }
-  if (thing[0].approachSiteCode) {
-    code(thing[0].approachSiteCode, data)
-  }
-  if (thing[0].doseQuantity) {
-    value(thing[0].doseQuantity, data)
-  }
-  if (thing[0].rateQuantity) {
-    value(thing[0].rateQuantity, data)
-  }
-  if (thing[0].maxDoseQuantity) {
-    value(thing[0].maxDoseQuantity, data)
-  }
-  if (thing[0].methodCode) {
-    code(thing[0].methodCode, data)
-  }
-  if (thing[0].targetSiteCode) {
-    code(thing[0].targetSiteCode, data)
-  }
-  if (thing[0].participant){
-    participant(thing[0].participant, data)
-  }
-  if (thing[0].consumable){
-    consumable(thing[0].consumable, data)
-  }
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
-}
-
-const supply = function (thing, data) {
-  if (thing[0].id) {
-    id(thing[0].id, data);
-  }
-  if (thing[0].code) {
-    code(thing[0].code, data);
-  }
-  if (thing[0].text) {
-    originalText(thing[0].text, data);
-  }
-  if (thing[0].statusCode) {
-    code(thing[0].statusCode, data);
-  }
-  if (thing[0].effectiveTime) {
-    effectiveTime(thing[0].effectiveTime, data);
-  }
-  if (thing[0].quantity) {
-    value(thing[0].quantity, data);
-  }
-  if (thing[0].entryRelationship) {
-    entryRelationship(thing[0].entryRelationship, data)
-  }
-  if (thing[0].author){
-    author(thing[0].author, data);
-  }
-  if (thing[0].performer){
-    performer(thing[0].performer, data);
-  }
+const tweakString = function (string) {
+  if (string.startsWith('tel:')) string = string.slice(4);
+  return string.trim();
 }
 
 // Operations for Mapping
 const dateTranslate = function (thing) {
-  let output = null
-  try {
-   thing = thing.replace('.000', '');
-   let newTime = moment(thing, 'YYYYMMDDHHmmssZ');
-   output = newTime.toISOString();
-  }
-  catch (e) {
-    console.log(e);
-  }
-  finally {
-    return output;
+  const dateParts = thing.match(/^(\d{4})(\d{2})(\d{2})(\d{2})?(\d{2})?(\d{2})?([+-]\d{2})?(\d{2})?/);
+  if (dateParts) {
+    const [_, year, month, day, hour = '00', minute = '00', second = '00', offsetH = '', offsetM = ''] = dateParts;
+    const offset = offsetH ? `${offsetH}:${offsetM}` : '';
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`;
   }
 }
 
@@ -594,126 +158,189 @@ const match = function (fhirStuff, data) {
     cda: [],
     fhir: []
   };
-  let prior = {};
   let colorIndex = 10;
-  fhirStuff = fhirStuff.replace(/urn:oid:/gm, '');
+  fhirStuff = fhirStuff.replace(/urn:(oid|uuid):/gm, '');
   for (let i = 0; i < data.length; i++) {
-    if (!prior[data[i]]) {
-      let initialLength = matches.cda.length;
-      if (fhirStuff.includes( '"' + data[i] + '"', 'gm') || fhirStuff.includes("'" + data[i] + "'", 'gm') ) {
+    let initialLength = matches.cda.length;
+    const number = !isNaN(Number(data[i]));
+    // Separate runs - first one to find a match - stop looking
+    for (const [pre, post] of [
+      ['"', '"'],   // Surrounded by quotes
+      ["'", "'"],   // Surrounded by single quotes
+      ['\\s', '"'],  // End of a string
+      ['\\s', '\\s'], // Surrounded by spaces
+      ['\\s', ',']   // End of a string with a comma
+    ]) {
+      const match = fhirStuff.match(stringToRegExp(data[i], pre, post));
+      if (match && match[1]) {
         matches.cda.push({string: data[i], color: colorIndex});
-        matches.fhir.push({string: data[i], color: colorIndex});
-        prior[data[i]] = true;
+        matches.fhir.push({string: match[1], color: colorIndex, number});
+        break
       }
-      else if (fhirStuff.includes(data[i] + '"', 'gm') || fhirStuff.includes(data[i] + "'", 'gm') ) {
-        matches.cda.push({string: data[i], color: colorIndex});
-        matches.fhir.push({string: data[i], color: colorIndex});
-        prior[data[i]] = true;
-      }
-      else if (fhirStuff.includes(' ' + data[i] + ' ', 'gm')) {
-        matches.cda.push({string: data[i], color: colorIndex});
-        matches.fhir.push({string: data[i], color: colorIndex});
-        prior[data[i]] = true;
-      }
-      else if (fhirStuff.includes(' ' + data[i] + ',', 'gm')) {
-        matches.cda.push({string: data[i], color: colorIndex});
-        matches.fhir.push({string: data[i], color: colorIndex, number: true});
-        prior[data[i]] = true;
-      }
-      else if (translation[data[i]]) {
-        let pieces = translation[data[i]].split('|')
-        for (let j = 0; j < pieces.length; j++) {
-          if (fhirStuff.includes(pieces[j])) {
-            matches.cda.push({string: data[i], color: colorIndex});
-            matches.fhir.push({string: pieces[j], color: colorIndex});
-            prior[data[i]] = true;    
-          }
+    }
+    if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
+      if (data[i].length < 9) {
+        let re = data[i];
+        if (data[i].length === 8) re = data[i].slice(0,4) + '-' + data[i].slice(4,6) + '-' + data[i].slice(6,8);   
+        else if (data[i].length === 6) re = data[i].slice(0,4) + '-' + data[i].slice(4,6);
+        let results = fhirStuff.match(re);
+        if (results && results.length) {
+          matches.cda.push({string: data[i], color: colorIndex});
+          matches.fhir.push({string: results[0], color: colorIndex});
         }
       }
-      else if (data[i].slice(0,2) === '19' || data[i].slice(0,2) === '20') {
-        if (data[i].length < 9) {
-          let re = data[i];
-          if (data[i].length === 8) re = data[i].slice(0,4) + '-' + data[i].slice(4,6) + '-' + data[i].slice(6,8);   
-          else if (data[i].length === 6) re = data[i].slice(0,4) + '-' + data[i].slice(4,6);
-          let results = fhirStuff.match(re);
+      else {
+        let iso = dateTranslate(data[i]);
+        if (iso) {
+          let results = fhirStuff.match(iso)
           if (results && results.length) {
             matches.cda.push({string: data[i], color: colorIndex});
             matches.fhir.push({string: results[0], color: colorIndex});
-            prior[data[i]] = true; 
           }
-        }
-        else {
-          let iso = dateTranslate(data[i]);
-          if (iso) {
-            let start = iso.slice(0,11);
-            let end = iso.slice(13,16);
-            let re = new RegExp(start + '..' + end, 'gm');
-            let results = fhirStuff.match(re)
-            if (results && results.length) {
-              matches.cda.push({string: data[i], color: colorIndex});
-              matches.fhir.push({string: results[0], color: colorIndex});
-              prior[data[i]] = true; 
-            }
-          }  
+        }  
+      }
+    }
+
+    // Always run the translations
+    if (fhirEquivalents[data[i]]) {
+      let pieces = fhirEquivalents[data[i]].split('|')
+      for (let j = 0; j < pieces.length; j++) {
+        const results = fhirStuff.match(stringToRegExp(pieces[j]));
+        if (results) {
+          matches.cda.push({string: data[i], color: colorIndex});
+          matches.fhir.push({string: results[0], color: colorIndex, number});
         }
       }
-      if (matches.cda.length !== initialLength) colorIndex++;  
     }
+
+
+    if (matches.cda.length !== initialLength) colorIndex++;  
     if (colorIndex === 43) colorIndex = 10;
   }
   console.log(matches);
   return matches;
 }
 
+function stringToRegExp(string, preRegEx, postRegEx) {
+  let mainSearch = string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let flags = 'im';
+  if (preRegEx || postRegEx) {
+    mainSearch = `(${mainSearch})`;
+    if (preRegEx) mainSearch = `(?:${preRegEx})${mainSearch}`;
+    if (postRegEx) mainSearch = `${mainSearch}(?:${postRegEx})`;
+  } else {
+    flags += 'g';
+  }
+  return new RegExp(mainSearch, flags);
+}
+
 const mark = function (cda, fhir, matches) {
   let cdaOutput = escape(cda);
   let fhirOutput = escape(fhir);
+  matches.cda.sort((a, b) => b.string.length - a.string.length);
   for (let i = 0; i < matches.cda.length; i++) {
-    let stringreplace = matches.cda[i].string;
-    if (stringreplace.length < 4) {
-      stringreplace = `&quot;${stringreplace}&quot;`;
+    let toWrap = matches.cda[i].string
+    if (toWrap.length < 4) {
+      toWrap = `&quot;${toWrap}&quot;`;
     }
-    let match = new RegExp(stringreplace, 'g');
+    let match = stringToRegExp(toWrap);
+    // Doesn't match with strings? See if it's between elements, like <value>12</value>
     if (!cdaOutput.match(match)) {
-      stringreplace = matches.cda[i].string;
-      stringreplace = `&gt;${stringreplace}&lt;`;
-      match = new RegExp(stringreplace, 'g');
+      toWrap = `&gt;${matches.cda[i].string}&lt;`;
+      match = stringToRegExp(toWrap);
     }
-    // console.log(match);
-    // console.log(cdaOutput.match(match));
-    cdaOutput = cdaOutput.replace(match, `<mark class="color${matches.cda[i].color}" >${stringreplace}</mark>`)
+    // Doesn't match with either of those? Try space-separated
+    if (!cdaOutput.match(match)) {
+      toWrap = ` ${matches.cda[i].string} `;
+      match = stringToRegExp(toWrap);
+    }
+    cdaOutput = cdaOutput.replace(match, (matched) => `<mark class="color${matches.cda[i].color}" >${matched}</mark>`);
+
+    // Translation
+    if (cdaSynonyms[matches.cda[i].string]) {
+      for (const altName of cdaSynonyms[matches.cda[i].string]) {
+        const altMatch = new RegExp(altName, 'gi');
+        cdaOutput = cdaOutput.replace(altMatch, `<mark class="color${matches.cda[i].color}" >${altName}</mark>`)
+      }
+    }
   }
-  for (let i = 0; i < matches.cda.length; i++) {
-    let stringreplace2 = matches.fhir[i].string;
-    if (stringreplace2.length < 4 && !matches.fhir[i].number) {
-      stringreplace2 = `&quot;${stringreplace2}&quot;`;
+  matches.fhir.sort((a, b) => b.string.length - a.string.length);
+  for (let i = 0; i < matches.fhir.length; i++) {
+    let toWrap = matches.fhir[i].string;
+    if (toWrap.length < 4) {
+      // First try finding instances of number as a number
+      if (matches.fhir[i].number) {
+        fhirOutput = fhirOutput.replace(stringToRegExp(toWrap, null, ',|\\n'), (matched) => `<mark class="color${matches.fhir[i].color}" >${matched}</mark>`);
+      }
+      // But always look for quoted versions, too, and replace them
+      toWrap = `&quot;${toWrap}&quot;`;
     }
-    // how to handle integers, will highlight comma
-    else if (stringreplace2.length < 4) {
-      stringreplace2 = `${stringreplace2},`;
-    }
-    let match = new RegExp(stringreplace2, 'g');
-    fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${stringreplace2}</mark>`)
+    let match = stringToRegExp(toWrap);
+    fhirOutput = fhirOutput.replace(match, `<mark class="color${matches.fhir[i].color}" >${toWrap}</mark>`)
   }
   // console.log(cdaOutput);
   // console.log(fhirOutput);
   // console.log(template);
+
+  // Simple XML highlighting
+  cdaOutput = cdaOutput
+    .replace(/(&lt;\/?)([a-zA-Z0-9:._-]+)(\s|&gt;|$)/g, '$1<span class="field">$2</span>$3')
+    .replace(/(&lt;!--[\s\S\n]*?--&gt;)/g, '<span class="comment">$1</span>')
+    .replace(/(\s)([a-zA-Z0-9:._-]+=)((?:<mark .*>)?&quot;.*?&quot;(?:<\/mark>)?)/g, '$1<span class="attrib">$2</span>$3')
+    .replace(/(&quot;.*?&quot;)/g, '<span class="value">$1</span>');
+  
+  // Simple JSON highlighting
+  fhirOutput = fhirOutput
+    .replace(/(\n\s+&quot;)([a-zA-Z0-9:._-]+)(&quot;)/g, '$1<span class="field">$2</span>$3')
+    .replace(/(\n\s+)(\/\/.+)/g, '$1<span class="comment">$2</span>')
+    .replace(/(\n\s+)(\/\*[\s\S\n]*?\*\/\s*\n?)/mg, '$1<span class="comment">$2</span>')
+    .replace(/(:\s+&quot;)(.*?)(&quot;)/g, '$1<span class="value">$2</span>$3')
+    .replace(/(:\s+)(\d+,)/g, '$1<span class="value">$2</span>');
+
+
   let newHtml = template.replace('<div id="cda" class="border codeArea">', `<div id="cda" class="border codeArea">${cdaOutput}`);
   newHtml = newHtml.replace('<div id="fhir" class="border codeArea">', `<div id="fhir" class="border codeArea">${fhirOutput}`);
   return newHtml;
 }
 
-// Main function 
+// My regex extraction alternative that doesn't seem to be working...
+const extractStringsFromXML = function(xmlString) {
+  const doubleQuoteStrings = [];
+  const betweenTagsStrings = [];
 
-const run = function (cdaStuff, fhirStuff) {
-  let cda = parser.toJson(cdaStuff, options);
-  let fhir = null;
-  if (!cda.entry && !cda.recordTarget) {
-    return 'ERROR: Not a CDA entry or recordTarget';
+  // Extract strings in double quotes
+  const doubleQuoteRegex = /"([^"]*)"/g;
+  let match;
+  while ((match = doubleQuoteRegex.exec(xmlString)) !== null) {
+    doubleQuoteStrings.push(match[1]);
   }
+
+  // Extract strings between > and <
+  const betweenTagsRegex = />([^<]*)</gm;
+  while ((match = betweenTagsRegex.exec(xmlString)) !== null) {
+    if (match[1].trim()) {
+      betweenTagsStrings.push(match[1].trim());
+    }
+  }
+
+  // Extract strings from comments containing a colon
+  const commentRegex = /<!--[^:>]*:\s*([^>]*)>/g;
+  while ((match = commentRegex.exec(xmlString)) !== null) {
+    if (match[1].trim()) {
+      betweenTagsStrings.push(match[1].trim());
+    }
+  }
+
+  return [...new Set(doubleQuoteStrings), ...new Set(betweenTagsStrings)];
+};
+
+// Main function 
+const run = async function (cdaStuff, fhirStuff) {
+  const cda = await new xml2js.Parser().parseStringPromise(cdaStuff);
+  let fhir = null;
   if (typeof(fhirStuff) === 'string') {
     try {
-      fhir = JSON.parse(fhirStuff);
+      fhir = parse(fhirStuff); // JSON.parse(fhirStuff);
     }
     catch (e) {
       console.log(e);
@@ -721,78 +348,17 @@ const run = function (cdaStuff, fhirStuff) {
   }
   else {
     fhir = fhirStuff;
-    fhirStuff = JSON.stringify(fhir);
+    fhirStuff = stringify(fhir); // JSON.stringify(fhir);
   }
-  if (!fhir || !fhir.resource) {
+  if (!fhir || (!fhir.resource && !fhir.resourceType)) {
     // console.log(fhir);
     return 'ERROR: Not a FHIR resource';
   }
   let data = [];
-  
-  if (cda.recordTarget && cda.recordTarget[0] && cda.recordTarget[0].patientRole && cda.recordTarget[0].patientRole[0]) {
-    if (cda.recordTarget[0].patientRole[0].id) {
-      id(cda.recordTarget[0].patientRole[0].id, data);
-    }
-    if (cda.recordTarget[0].patientRole[0].addr) {
-      addr(cda.recordTarget[0].patientRole[0].addr, data);
-    }
-    if (cda.recordTarget[0].patientRole[0].telecom){
-      telecom(cda.recordTarget[0].patientRole[0].telecom, data);
-    }
-    if (cda.recordTarget[0].patientRole[0].patient && cda.recordTarget[0].patientRole[0].patient[0]) {
-      if (cda.recordTarget[0].patientRole[0].patient[0].name) {
-        name(cda.recordTarget[0].patientRole[0].patient[0].name, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].administrativeGenderCode) {
-        code(cda.recordTarget[0].patientRole[0].patient[0].administrativeGenderCode, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].birthTime) {
-        effectiveTime(cda.recordTarget[0].patientRole[0].patient[0].birthTime, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].raceCode) {
-        code(cda.recordTarget[0].patientRole[0].patient[0].raceCode, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].ethnicGroupCode) {
-        code(cda.recordTarget[0].patientRole[0].patient[0].ethnicGroupCode, data);
-      }
-      if (cda.recordTarget[0].patientRole[0].patient[0].languageCommunication && cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0]) {
-        if(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].languageCode) {
-          code(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].languageCode, data);
-        }
-        if(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].preferenceInd) {
-          value(cda.recordTarget[0].patientRole[0].patient[0].languageCommunication[0].preferenceInd, data);
-        }
-      }
-    }
-  }
-  else {
-    for (let i = 0; i < cda.entry.length; i++) {
-      if (cda.entry[i].act) {
-        act(cda.entry[i].act, data);
-      }
-      else if (cda.entry[i].observation)  {
-        observation(cda.entry[i].observation, data);
-      }
-      else if (cda.entry[i].substanceAdministration) {
-        substanceAdministration(cda.entry[i].substanceAdministration, data);
-      }
-      else if (cda.entry[i].procedure) {
-        procedure(cda.entry[i].procedure, data);
-      }
-      else if (cda.entry[i].supply) {
-        supply(cda.entry[i].supply, data);
-      }
-      else if (cda.entry[i].organizer) {
-        organizer(cda.entry[i].organizer, data);
-      }
-      else if (cda.entry[i].encounter) {
-        encounter(cda.entry[i].encounter, data);
-      }
-      else {
-        console.log(`skipping ${cda} from main entry`);
-      }
-    }
-  }
+
+  addFields(cda, data);
+  // Remove duplicates
+  data = [...new Set(data.map(item => item.toLowerCase()).filter(item => !ignoredWords.includes(item)))];
 
   // Process XML comments of resolves to
   let r = new RegExp(/<!--[\s\S\n]*?-->/gm);
