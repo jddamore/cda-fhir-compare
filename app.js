@@ -1,3 +1,7 @@
+let httpPort = 80;
+let httpsPort = 443
+
+
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -55,9 +59,9 @@ if (credentials) {
   httpsServer = https.createServer(credentials, app);
 }
 
-httpServer.listen(8081);
-console.log('HTTP server running on port 8081...');
+httpServer.listen(httpPort);
+console.log(`HTTP server running on port ${httpPort}...`);
 if (httpsServer) {
-  httpsServer.listen(8082);
-  console.log('HTTPS server running on port 443...');
+  httpsServer.listen(httpsPort);
+  console.log(`HTTPS server running on port ${httpsPort}...`);
 }
