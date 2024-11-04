@@ -41,17 +41,21 @@ const fhirEquivalents = {
 
   '419511003': 'medication',
   '46680005': 'vital-signs',
+  '74728-7': '85353-1', // Vital Sign CDA vs FHIR panel code
   'f': 'female',  // don't do 'm' since we use that for married
   'h': 'home',
   'negationind=&quot;true&quot;': 'not-done',
   '2708-6': '59408-5',  // Pulse ox mapping to 2 FHIR codes
+  '1.030': '1.03',
 };
 
 const cdaSynonyms = {
-  '2.16.840.1.113883.6.96' : ['SNOMED CT', 'SNOMED-CT', 'SNOMED'],
-  '2.16.840.1.113883.6.88' : ['RxNorm'],
   '2.16.840.1.113883.6.1' : ['LOINC'],
+  '2.16.840.1.113883.6.88' : ['RxNorm'],
+  '2.16.840.1.113883.6.90' : ['ICD-10-CM'],
+  '2.16.840.1.113883.6.96' : ['SNOMED CT', 'SNOMED-CT', 'SNOMED'],
   '46680005' : ['&quot;vital signs&quot;', 'vital-signs'],
+  'recurrence': ['246455001'],
 }
 
 const ignoredWords = [
